@@ -20,6 +20,7 @@ import { registerChatRoute } from './api/routes/chat.route.js';
 import { registerHealthRoute } from './api/routes/health.route.js';
 import { registerMetricsRoute } from './api/routes/metrics.route.js';
 import { registerProvidersRoute } from './api/routes/providers.route.js';
+import { registerGenerationRoutes } from './api/routes/generation.route.js';
 import { rateLimitPlugin } from './security/rate-limit.js';
 import type { AppDependencies } from './api/dependencies.js';
 
@@ -33,6 +34,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     logger: loggerOptions,
     genReqId: generateRequestId,
     trustProxy: env.TRUST_PROXY,
+    bodyLimit: env.BODY_LIMIT_BYTES,
   });
 
   app.setValidatorCompiler(validatorCompiler);
@@ -67,6 +69,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       },
       tags: [
         { name: 'Chat', description: 'Unified chat completion endpoint' },
+        { name: 'Generation', description: 'Multimodal image and structured generation endpoints' },
         { name: 'Operations', description: 'Health, discovery, and metrics endpoints' },
       ],
     },
@@ -101,6 +104,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   registerMetricsRoute(app, deps);
   registerProvidersRoute(app, deps);
   registerChatRoute(app, deps);
+  registerGenerationRoutes(app, deps);
 
   return app;
 }

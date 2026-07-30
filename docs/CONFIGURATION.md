@@ -6,13 +6,14 @@ Copy [`../.env.example`](../.env.example) to `.env` to get started.
 
 ## Service
 
-| Variable       | Default           | Notes                                                                           |
-| -------------- | ----------------- | ------------------------------------------------------------------------------- |
-| `NODE_ENV`     | `development`     | `development` \| `test` \| `production`. Controls pretty-printed vs. JSON logs. |
-| `SERVICE_NAME` | `olnoo-ai-router` | Included in every log line and the `GET /health` response.                      |
-| `PORT`         | `8080`            |                                                                                 |
-| `HOST`         | `0.0.0.0`         |                                                                                 |
-| `LOG_LEVEL`    | `info`            | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` \| `silent`.       |
+| Variable           | Default           | Notes                                                                           |
+| ------------------ | ----------------- | ------------------------------------------------------------------------------- |
+| `NODE_ENV`         | `development`     | `development` \| `test` \| `production`. Controls pretty-printed vs. JSON logs. |
+| `SERVICE_NAME`     | `olnoo-ai-router` | Included in every log line and the `GET /health` response.                      |
+| `PORT`             | `8080`            |                                                                                 |
+| `HOST`             | `0.0.0.0`         |                                                                                 |
+| `BODY_LIMIT_BYTES` | `33554432`        | Maximum JSON request size. Sized for base64 multimodal requests.                |
+| `LOG_LEVEL`        | `info`            | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` \| `silent`.       |
 
 ## Security
 
@@ -25,16 +26,16 @@ Copy [`../.env.example`](../.env.example) to `.env` to get started.
 
 ## Provider request behavior
 
-| Variable                      | Default | Notes                                                                                               |
-| ----------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
-| `PROVIDER_REQUEST_TIMEOUT_MS` | `30000` | Applied to every outbound provider call; exceeding it returns `504 PROVIDER_TIMEOUT` to the caller. |
+| Variable                      | Default  | Notes                                                                                               |
+| ----------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `PROVIDER_REQUEST_TIMEOUT_MS` | `120000` | Applied to every outbound provider call; exceeding it returns `504 PROVIDER_TIMEOUT` to the caller. |
 
 ## Gemini provider
 
-| Variable         | Default                           | Notes                                                                                                                 |
-| ---------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `GEMINI_API_KEY` | _(required)_                      | From [Google AI Studio](https://aistudio.google.com/apikey). Server-side only — never sent to or readable by clients. |
-| `GEMINI_MODELS`  | `gemini-2.5-flash,gemini-2.5-pro` | Comma-separated list of model IDs this deployment is allowed to route to.                                             |
+| Variable         | Default            | Notes                                                                                                                 |
+| ---------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY` | _(required)_       | From [Google AI Studio](https://aistudio.google.com/apikey). Server-side only — never sent to or readable by clients. |
+| `GEMINI_MODELS`  | see `.env.example` | Comma-separated allow-list. Production must include the Architect image and review models.                            |
 
 ## Adding configuration for a new provider
 

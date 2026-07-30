@@ -11,7 +11,7 @@
 
 ```
 Client (an OLNOO product's backend)
-  │  POST /api/chat  { model, messages, provider? }
+  │  POST /api/chat | /api/images/generate | /api/structured
   ▼
 Fastify instance (src/app.ts)
   │  onRequest:  rate limiting (per API key)          [src/security/rate-limit.ts]
@@ -26,7 +26,7 @@ Route handler (src/api/routes/chat.route.ts)
   │                                                  ProviderRegistry [src/providers/provider.registry.ts]
   │                                                        │  (which AIProvider supports this model?)
   │                                                        ▼
-  │  provider.chat(input, { signal }) ──────────────►  AIProvider implementation
+  │  provider.chat/generateImage/generateStructured ─► AIProvider implementation
   │                                                     e.g. GeminiProvider [src/providers/gemini/]
   │                                                        │  vendor SDK call, with timeout + abort
   │                                                        ▼
@@ -62,6 +62,11 @@ Adding a new vendor (Anthropic, OpenAI, Qwen, Mistral, DeepSeek, a local model, 
 3. Add the vendor's env vars to `src/config/env.ts` and `.env.example`.
 
 No route, no middleware, no existing provider file changes. This is enforced structurally, not by convention: routes and the router only ever import `AIProvider`, `ProviderRegistry`, and `ModelRouter` — never a concrete provider class.
+
+Architect OLNOO calls only the Router. Its product routes continue to own
+authentication, paid-attempt persistence, prompt construction, concurrency,
+and result validation; provider credentials, SDK calls, provider timeout, and
+provider error normalization live only here.
 
 ## Why Fastify + Zod + fastify-type-provider-zod
 

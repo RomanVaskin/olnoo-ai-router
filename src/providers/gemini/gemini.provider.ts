@@ -1,11 +1,15 @@
-import { GoogleGenAI } from '@google/genai';
+import { FinishReason, GoogleGenAI, Modality } from '@google/genai';
 import { AppError } from '../../errors/app-error.js';
 import type {
   AIProvider,
   ProviderChatInput,
   ProviderChatOptions,
   ProviderChatOutput,
+  ProviderImageGenerationInput,
+  ProviderImageGenerationOutput,
   ProviderModelInfo,
+  ProviderStructuredGenerationInput,
+  ProviderStructuredGenerationOutput,
 } from '../provider.interface.js';
 import { withTimeout } from '../with-timeout.js';
 import { toFinishReason, toGeminiContents } from './gemini.mapper.js';
@@ -82,6 +86,131 @@ export class GeminiProvider implements AIProvider {
       throw new AppError('PROVIDER_ERROR', 'Gemini provider request failed', { cause: error });
     }
   }
+
+  async generateImage(
+    input: ProviderImageGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderImageGenerationOutput> {
+    try {
+      const response = await withTimeout(
+        (timeoutSignal) =>
+          this.client.models.generateContent({
+            model: input.model,
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: input.prompt },
+                  ...input.images.flatMap((image) => [
+                    ...(image.label ? [{ text: image.label }] : []),
+                    { inlineData: { mimeType: image.mimeType, data: image.data } },
+                  ]),
+                ],
+              },
+            ],
+            config: {
+              responseModalities: [Modality.IMAGE],
+              abortSignal: anySignal([timeoutSignal, options.signal]),
+            },
+          }),
+        this.requestTimeoutMs,
+        this.name,
+      );
+
+      assertNotRejected(
+        response.promptFeedback?.blockReason,
+        response.candidates?.[0]?.finishReason,
+      );
+      const parts = response.candidates?.[0]?.content?.parts ?? [];
+      const image = parts.find((part) => part.inlineData?.data)?.inlineData;
+      if (!image?.data) {
+        throw new AppError('PROVIDER_INVALID_RESPONSE', 'Provider returned no image');
+      }
+      return {
+        model: input.model,
+        imageBase64: image.data,
+        mimeType: image.mimeType ?? 'image/png',
+        warnings: parts.flatMap((part) =>
+          typeof part.text === 'string' && part.text.trim() ? [part.text] : [],
+        ),
+      };
+    } catch (error) {
+      throw mapGeminiError(error);
+    }
+  }
+
+  async generateStructured(
+    input: ProviderStructuredGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderStructuredGenerationOutput> {
+    try {
+      const response = await withTimeout(
+        (timeoutSignal) =>
+          this.client.models.generateContent({
+            model: input.model,
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: input.prompt },
+                  ...input.images.flatMap((image) => [
+                    ...(image.label ? [{ text: image.label }] : []),
+                    { inlineData: { mimeType: image.mimeType, data: image.data } },
+                  ]),
+                ],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+              responseJsonSchema: input.jsonSchema,
+              ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
+              abortSignal: anySignal([timeoutSignal, options.signal]),
+            },
+          }),
+        this.requestTimeoutMs,
+        this.name,
+      );
+      assertNotRejected(
+        response.promptFeedback?.blockReason,
+        response.candidates?.[0]?.finishReason,
+      );
+      if (!response.text) {
+        throw new AppError('PROVIDER_INVALID_RESPONSE', 'Provider returned no structured content');
+      }
+      return { model: input.model, content: response.text };
+    } catch (error) {
+      throw mapGeminiError(error);
+    }
+  }
+}
+
+const REJECTED_FINISH_REASONS = new Set<string>([
+  FinishReason.SAFETY,
+  FinishReason.PROHIBITED_CONTENT,
+  FinishReason.BLOCKLIST,
+  FinishReason.SPII,
+  FinishReason.RECITATION,
+]);
+
+function assertNotRejected(
+  blockReason: string | undefined,
+  finishReason: string | undefined,
+): void {
+  if (blockReason || (finishReason && REJECTED_FINISH_REASONS.has(finishReason))) {
+    throw new AppError('PROVIDER_SAFETY_REJECTION', 'Provider rejected the request for safety');
+  }
+}
+
+function mapGeminiError(error: unknown): AppError {
+  if (error instanceof AppError) return error;
+  const status = (error as { status?: number } | null)?.status;
+  if (status === 429) {
+    const message = error instanceof Error ? error.message : '';
+    return /limit:\s*0\b/i.test(message)
+      ? new AppError('PROVIDER_QUOTA_EXHAUSTED', 'Provider quota is exhausted', { cause: error })
+      : new AppError('PROVIDER_RATE_LIMITED', 'Provider rate limit exceeded', { cause: error });
+  }
+  return new AppError('PROVIDER_ERROR', 'Gemini provider request failed', { cause: error });
 }
 
 function anySignal(signals: AbortSignal[]): AbortSignal {

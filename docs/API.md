@@ -118,3 +118,39 @@ Every non-2xx response has the same shape:
 | `INTERNAL_ERROR`   | 500         | Unexpected error inside the router itself.                                                                      |
 | `PROVIDER_ERROR`   | 502         | The upstream AI provider call failed. The underlying cause is logged server-side, never returned to the caller. |
 | `PROVIDER_TIMEOUT` | 504         | The upstream AI provider did not respond within `PROVIDER_REQUEST_TIMEOUT_MS`.                                  |
+
+## `POST /api/images/generate`
+
+Generate one image from a text prompt and 1–4 inline JPEG, PNG, or WebP images.
+Requires `x-api-key`.
+
+```json
+{
+  "model": "gemini-3.1-flash-image",
+  "prompt": "Preserve the camera and redesign the facade.",
+  "images": [
+    {
+      "mimeType": "image/jpeg",
+      "data": "<base64>",
+      "label": "IMAGE 1: PRIMARY EDIT TARGET"
+    }
+  ]
+}
+```
+
+The response contains `imageBase64`, `mimeType`, `warnings`, provider/model
+metadata, latency, timestamp, and request ID.
+
+## `POST /api/structured`
+
+Generate schema-constrained JSON from a prompt and 1–4 inline images. Requires
+`x-api-key`. The request adds `jsonSchema` and optional `temperature`; the
+response returns the JSON document as `content` plus provider/model metadata.
+
+These endpoints are non-streaming in Stage 1. Large multimodal JSON bodies are
+bounded by `BODY_LIMIT_BYTES`; callers should keep decoded image payloads within
+their provider's inline-request limit.
+
+Additional safe provider codes used by multimodal endpoints are
+`PROVIDER_RATE_LIMITED`, `PROVIDER_QUOTA_EXHAUSTED`,
+`PROVIDER_SAFETY_REJECTION`, and `PROVIDER_INVALID_RESPONSE`.

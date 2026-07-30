@@ -10,6 +10,14 @@ interface AIProvider {
   listModels(): ProviderModelInfo[];
   supportsModel(model: string): boolean;
   chat(input: ProviderChatInput, options: ProviderChatOptions): Promise<ProviderChatOutput>;
+  generateImage(
+    input: ProviderImageGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderImageGenerationOutput>;
+  generateStructured(
+    input: ProviderStructuredGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderStructuredGenerationOutput>;
 }
 ```
 
@@ -40,6 +48,10 @@ registry.register(
 - `finishReason` mapping: Gemini's `STOP` → `stop`, `MAX_TOKENS` → `length`, `SAFETY`/`RECITATION`/`BLOCKLIST`/`PROHIBITED_CONTENT`/`SPII` → `content_filter`, anything else → `error`.
 - Every call is wrapped with `PROVIDER_REQUEST_TIMEOUT_MS` (`src/providers/with-timeout.ts`) and an `AbortController` tied to both the timeout and the inbound HTTP request's `close` event, so an abandoned client request doesn't leave a Gemini call running unbounded.
 - Any SDK error (network failure, 4xx/5xx from Google, malformed response) is caught and re-thrown as `AppError('PROVIDER_ERROR', ...)` — the original error is attached as `cause` for server-side logging only, never serialized to the caller.
+- Image generation maps inline image parts and requests image modality.
+- Structured generation maps inline image parts, JSON response MIME type, and
+  the caller-provided JSON schema. Both operations preserve the same timeout,
+  cancellation, secret handling, safe-error, and logging guarantees as chat.
 
 ## Adding a new provider (Stage 2+)
 

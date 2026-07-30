@@ -39,6 +39,20 @@ docker compose up --build
 
 `docker-compose.yml` builds the image, loads `.env`, publishes `PORT` (default `8080`), and wires the same health check as the Dockerfile so `docker compose ps` reflects real service health.
 
+For a production VM deployment:
+
+```bash
+cd /opt/olnoo/projects/olnoo-ai-router
+docker compose up -d --build
+docker compose ps
+curl --fail http://127.0.0.1:8080/health
+docker compose logs --tail=100 ai-router
+```
+
+`restart: unless-stopped` makes the service start with Docker after reboot and
+restart after process failure. Keep the listener on the private network; only
+trusted OLNOO backends should receive an `API_KEYS` value.
+
 ## Health and readiness
 
 - `GET /health` returns `200` with `{ status: "ok", ... }` as soon as the process is accepting connections. There are no external dependencies (no database, no cache) to wait on in Stage 1, so liveness and readiness are equivalent.
@@ -59,3 +73,23 @@ This service is stateless (no database, no session, no local disk state), so any
 ## Secrets in deployment
 
 Never bake `GEMINI_API_KEY` or `API_KEYS` into the Docker image or commit them to source control. Inject them via your deployment platform's secret manager (or `--env-file` / `docker compose`'s `env_file:` for local/staging use, as configured in `docker-compose.yml`).
+
+Architect receives one Router credential via `AI_ROUTER_API_KEY`; it does not
+receive `GEMINI_API_KEY`. Reuse the server's existing Gemini secret by injecting
+it into the Router environment—never copy it into Architect.
+
+## Troubleshooting
+
+- `curl --fail http://127.0.0.1:8080/health` fails: inspect
+  `docker compose ps` and `docker compose logs ai-router`; startup validation
+  lists missing environment variable names without printing their values.
+- `401 UNAUTHORIZED`: verify Architect's `AI_ROUTER_API_KEY` is one entry in
+  Router `API_KEYS`.
+- `404 MODEL_NOT_FOUND`: add the selected `AI_IMAGE_MODEL` or
+  `AI_REVIEW_MODEL` to Router `GEMINI_MODELS`, then recreate the service.
+- `413`: raise `BODY_LIMIT_BYTES` only after reviewing caller/provider payload
+  limits.
+- `504 PROVIDER_TIMEOUT`: compare Architect cancellation limits with
+  `PROVIDER_REQUEST_TIMEOUT_MS` and inspect provider availability.
+- `429 PROVIDER_RATE_LIMITED` or `PROVIDER_QUOTA_EXHAUSTED`: wait for the rate
+  window or correct provider billing/quota respectively.

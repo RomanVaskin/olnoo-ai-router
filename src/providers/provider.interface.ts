@@ -1,4 +1,5 @@
 import type { ChatMessage, ChatUsage, FinishReason } from '../types/chat.js';
+import type { InlineImage } from '../types/generation.js';
 
 export interface ProviderModelInfo {
   id: string;
@@ -25,6 +26,32 @@ export interface ProviderChatOptions {
   signal: AbortSignal;
 }
 
+export interface ProviderImageGenerationInput {
+  model: string;
+  prompt: string;
+  images: InlineImage[];
+}
+
+export interface ProviderImageGenerationOutput {
+  model: string;
+  imageBase64: string;
+  mimeType: string;
+  warnings: string[];
+}
+
+export interface ProviderStructuredGenerationInput {
+  model: string;
+  prompt: string;
+  images: InlineImage[];
+  jsonSchema: Record<string, unknown>;
+  temperature?: number;
+}
+
+export interface ProviderStructuredGenerationOutput {
+  model: string;
+  content: string;
+}
+
 /**
  * The single contract every AI vendor integration must implement.
  *
@@ -42,4 +69,14 @@ export interface AIProvider {
   supportsModel(model: string): boolean;
 
   chat(input: ProviderChatInput, options: ProviderChatOptions): Promise<ProviderChatOutput>;
+
+  generateImage(
+    input: ProviderImageGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderImageGenerationOutput>;
+
+  generateStructured(
+    input: ProviderStructuredGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderStructuredGenerationOutput>;
 }

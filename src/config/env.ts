@@ -16,6 +16,11 @@ const envSchema = z.object({
   SERVICE_NAME: z.string().min(1).default('olnoo-ai-router'),
   PORT: z.coerce.number().int().positive().default(8080),
   HOST: z.string().min(1).default('0.0.0.0'),
+  BODY_LIMIT_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(32 * 1024 * 1024),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
   // Security
@@ -25,7 +30,7 @@ const envSchema = z.object({
   TRUST_PROXY: z.coerce.boolean().default(false),
 
   // Provider request behavior
-  PROVIDER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  PROVIDER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
   // Gemini provider
   GEMINI_API_KEY: z.string().min(1),

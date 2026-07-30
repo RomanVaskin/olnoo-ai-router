@@ -3,7 +3,11 @@ import type {
   ProviderChatInput,
   ProviderChatOptions,
   ProviderChatOutput,
+  ProviderImageGenerationInput,
+  ProviderImageGenerationOutput,
   ProviderModelInfo,
+  ProviderStructuredGenerationInput,
+  ProviderStructuredGenerationOutput,
 } from '../../src/providers/provider.interface.js';
 
 export interface FakeProviderConfig {
@@ -13,17 +17,29 @@ export interface FakeProviderConfig {
     input: ProviderChatInput,
     options: ProviderChatOptions,
   ) => Promise<ProviderChatOutput>;
+  imageImpl?: (
+    input: ProviderImageGenerationInput,
+    options: ProviderChatOptions,
+  ) => Promise<ProviderImageGenerationOutput>;
+  structuredImpl?: (
+    input: ProviderStructuredGenerationInput,
+    options: ProviderChatOptions,
+  ) => Promise<ProviderStructuredGenerationOutput>;
 }
 
 export class FakeProvider implements AIProvider {
   readonly name: string;
   private readonly models: ProviderModelInfo[];
   private readonly chatImpl: FakeProviderConfig['chatImpl'];
+  private readonly imageImpl: FakeProviderConfig['imageImpl'];
+  private readonly structuredImpl: FakeProviderConfig['structuredImpl'];
 
   constructor(config: FakeProviderConfig = {}) {
     this.name = config.name ?? 'fake';
     this.models = config.models ?? [{ id: 'fake-model', label: 'Fake Model' }];
     this.chatImpl = config.chatImpl;
+    this.imageImpl = config.imageImpl;
+    this.structuredImpl = config.structuredImpl;
   }
 
   listModels(): ProviderModelInfo[] {
@@ -44,5 +60,26 @@ export class FakeProvider implements AIProvider {
       finishReason: 'stop',
       usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
     };
+  }
+
+  async generateImage(
+    input: ProviderImageGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderImageGenerationOutput> {
+    if (this.imageImpl) return this.imageImpl(input, options);
+    return {
+      model: input.model,
+      imageBase64: Buffer.from('fake image').toString('base64'),
+      mimeType: 'image/png',
+      warnings: [],
+    };
+  }
+
+  async generateStructured(
+    input: ProviderStructuredGenerationInput,
+    options: ProviderChatOptions,
+  ): Promise<ProviderStructuredGenerationOutput> {
+    if (this.structuredImpl) return this.structuredImpl(input, options);
+    return { model: input.model, content: '{"ok":true}' };
   }
 }

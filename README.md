@@ -39,6 +39,22 @@ curl -H "x-api-key: <your-key>" \
 
 Interactive API docs (Swagger UI) are served at `http://localhost:8080/docs` once the server is running.
 
+Architect OLNOO uses the Router for both architectural image generation and
+schema-constrained geometry review:
+
+```text
+Architect OLNOO
+    │  x-api-key
+    ├── POST /api/images/generate
+    └── POST /api/structured
+                ↓
+        OLNOO AI Router
+                ↓
+        Gemini provider adapter
+                ↓
+             Gemini API
+```
+
 ## Project layout
 
 ```

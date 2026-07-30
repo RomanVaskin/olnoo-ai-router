@@ -5,6 +5,7 @@
 - [x] `AIProvider` contract + `ProviderRegistry` + `ModelRouter`.
 - [x] Gemini provider, fully wired end to end.
 - [x] `POST /api/chat`, `GET /health`, `GET /providers`, `GET /metrics`.
+- [x] Multimodal `POST /api/images/generate` and schema-constrained `POST /api/structured` for OLNOO product backends.
 - [x] API key auth, per-key rate limiting, request IDs, structured logging (no message content), Prometheus metrics.
 - [x] Zod-validated environment configuration, fail-fast at startup.
 - [x] OpenAPI docs generated from the same schemas that validate requests.

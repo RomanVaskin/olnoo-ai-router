@@ -1,0 +1,27 @@
+services:
+  ai-router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: olnoo-ai-router:local
+    container_name: olnoo-ai-router
+    restart: unless-stopped
+    ports:
+      - '${PORT:-8080}:8080'
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

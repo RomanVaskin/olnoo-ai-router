@@ -34,7 +34,7 @@ const envSchema = z.object({
 
   // Gemini provider
   GEMINI_API_KEY: z.string().min(1),
-  GEMINI_MODELS: commaSeparatedList.default('gemini-2.5-flash,gemini-2.5-pro'),
+  GEMINI_MODELS: commaSeparatedList.default('gemini-3.5-flash'),
 });
 
 export type Env = z.infer<typeof envSchema>;

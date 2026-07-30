@@ -6,6 +6,7 @@ import type { ProviderModelInfo } from '../provider.interface.js';
  * surfaces without a context-window hint on GET /providers.
  */
 const KNOWN_GEMINI_MODELS: Record<string, Omit<ProviderModelInfo, 'id'>> = {
+  'gemini-3.5-flash': { label: 'Gemini 3.5 Flash' },
   'gemini-2.5-pro': { label: 'Gemini 2.5 Pro', contextWindow: 1_048_576 },
   'gemini-2.5-flash': { label: 'Gemini 2.5 Flash', contextWindow: 1_048_576 },
   'gemini-2.5-flash-lite': { label: 'Gemini 2.5 Flash-Lite', contextWindow: 1_048_576 },

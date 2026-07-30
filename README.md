@@ -33,7 +33,7 @@ pnpm dev                    # http://localhost:8080
 ```bash
 curl -H "x-api-key: <your-key>" \
      -H "content-type: application/json" \
-     -d '{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"Hello"}]}' \
+     -d '{"model":"gemini-3.5-flash","messages":[{"role":"user","content":"Hello"}]}' \
      http://localhost:8080/api/chat
 ```
 

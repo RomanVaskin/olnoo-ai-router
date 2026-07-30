@@ -17,7 +17,7 @@ Send a chat completion request through the router to an AI provider. **Requires 
 ```json
 {
   "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3.5-flash",
   "messages": [
     { "role": "system", "content": "You are concise." },
     { "role": "user", "content": "What is the capital of France?" }
@@ -43,7 +43,7 @@ Send a chat completion request through the router to an AI provider. **Requires 
 {
   "requestId": "e66d1942-8a10-40fe-bc03-7b4255e8fcb0",
   "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3.5-flash",
   "content": "Paris.",
   "finishReason": "stop",
   "usage": { "promptTokens": 14, "completionTokens": 3, "totalTokens": 17 },
@@ -68,7 +68,7 @@ List every registered provider and the models it's configured to serve. **Requir
     {
       "name": "gemini",
       "models": [
-        { "id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash", "contextWindow": 1048576 },
+        { "id": "gemini-3.5-flash", "label": "Gemini 3.5 Flash" },
         { "id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro", "contextWindow": 1048576 }
       ]
     }

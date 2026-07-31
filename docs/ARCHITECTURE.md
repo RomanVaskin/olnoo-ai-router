@@ -1,5 +1,25 @@
 # Architecture
 
+## Product request flows
+
+Architect uses the image and multimodal structured endpoints. Studio uses the
+same provider-neutral `POST /api/structured` endpoint in text-only mode for
+schema-constrained change plans:
+
+```text
+Studio OLNOO
+    │ HTTP JSON + x-api-key + x-request-id
+    ▼
+OLNOO AI Router (/api/structured)
+    │ provider SDK
+    ▼
+Gemini
+```
+
+Text-only structured requests omit images or send `images: []`. Optional safe
+metadata identifies `module: "studio"` and `projectId`; prompts, project
+secrets, `.env` contents and API keys are never logged.
+
 ## Design goals
 
 1. **One contract, many vendors.** Nothing outside `src/providers/<vendor>/` may know how a specific AI vendor's SDK, auth, or wire format works. Every other layer depends only on the `AIProvider` interface.

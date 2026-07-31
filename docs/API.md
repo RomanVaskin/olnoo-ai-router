@@ -143,9 +143,12 @@ metadata, latency, timestamp, and request ID.
 
 ## `POST /api/structured`
 
-Generate schema-constrained JSON from a prompt and 1–4 inline images. Requires
-`x-api-key`. The request adds `jsonSchema` and optional `temperature`; the
-response returns the JSON document as `content` plus provider/model metadata.
+Generate schema-constrained JSON from a prompt and optional 1–4 inline images.
+Requires `x-api-key`. Text-only callers may omit `images` or pass an empty
+array. The request adds `jsonSchema`, optional `temperature`,
+`expectedFormat: "json"`, and safe correlation metadata (`module` and optional
+`projectId`); the response returns the JSON document as `content` plus
+provider/model metadata. End-to-end correlation uses the `x-request-id` header.
 
 These endpoints are non-streaming in Stage 1. Large multimodal JSON bodies are
 bounded by `BODY_LIMIT_BYTES`; callers should keep decoded image payloads within

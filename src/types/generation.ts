@@ -32,8 +32,18 @@ export const imageGenerationResponseSchema = z.object({
 export type ImageGenerationResponse = z.infer<typeof imageGenerationResponseSchema>;
 
 export const structuredGenerationRequestSchema = multimodalRequestBaseSchema.extend({
+  // Structured generation also serves text-only product workflows.
+  // Image generation above still requires at least one source image.
+  images: z.array(inlineImageSchema).max(4).default([]),
   jsonSchema: z.record(z.unknown()),
   temperature: z.number().min(0).max(2).optional(),
+  expectedFormat: z.literal('json').optional(),
+  metadata: z
+    .object({
+      module: z.string().min(1).max(64),
+      projectId: z.string().min(1).max(200).optional(),
+    })
+    .optional(),
 });
 export type StructuredGenerationRequest = z.infer<typeof structuredGenerationRequestSchema>;
 

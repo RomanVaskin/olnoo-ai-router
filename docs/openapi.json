@@ -885,8 +885,8 @@
                       "required": ["mimeType", "data"],
                       "additionalProperties": false
                     },
-                    "minItems": 1,
-                    "maxItems": 4
+                    "maxItems": 4,
+                    "default": []
                   },
                   "jsonSchema": {
                     "type": "object",
@@ -896,9 +896,30 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 2
+                  },
+                  "expectedFormat": {
+                    "type": "string",
+                    "enum": ["json"]
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {
+                      "module": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "projectId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "required": ["module"],
+                    "additionalProperties": false
                   }
                 },
-                "required": ["model", "prompt", "images", "jsonSchema"],
+                "required": ["model", "prompt", "jsonSchema"],
                 "additionalProperties": false
               }
             }

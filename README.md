@@ -55,6 +55,11 @@ Architect OLNOO
              Gemini API
 ```
 
+Studio OLNOO uses the same `POST /api/structured` endpoint without images for
+schema-constrained change plans. Studio sends `x-request-id` for correlation
+and `metadata.module: "studio"`; it never sends project secrets or `.env`
+contents.
+
 ## Project layout
 
 ```

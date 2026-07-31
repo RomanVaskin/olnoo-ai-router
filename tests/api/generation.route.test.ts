@@ -61,6 +61,28 @@ describe('multimodal generation routes', () => {
     });
   });
 
+  it('supports text-only structured Studio requests and preserves request correlation', async () => {
+    app = await buildTestApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/structured',
+      headers: { 'x-api-key': API_KEY, 'x-request-id': 'studio-request-123' },
+      payload: {
+        model: 'fake-model',
+        prompt: 'Build a change plan',
+        jsonSchema: { type: 'object' },
+        expectedFormat: 'json',
+        metadata: { module: 'studio', projectId: 'project-1' },
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['x-request-id']).toBe('studio-request-123');
+    expect(response.json()).toMatchObject({
+      requestId: 'studio-request-123',
+      content: '{"ok":true}',
+    });
+  });
+
   it('requires authentication and validates inline images', async () => {
     app = await buildTestApp();
     const unauthorized = await app.inject({

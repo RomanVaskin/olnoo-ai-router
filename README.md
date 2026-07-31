@@ -4,7 +4,7 @@ The single entry point to every AI model used across the OLNOO platform.
 
 No OLNOO product calls Gemini, OpenAI, Anthropic, or any other model provider directly. Every AI request flows through this router, which authenticates the caller, resolves the right provider for the requested model, forwards the request, and returns a normalized, provider-agnostic response.
 
-**Stage 1** (this release): Gemini only, behind a vendor-neutral `AIProvider` interface designed so Anthropic, OpenAI, Qwen, Mistral, DeepSeek, or any other provider can be added later as a new file — never as a branch in existing code.
+The Router supports Anthropic, OpenAI, and Gemini behind a vendor-neutral `AIProvider` interface. Existing OLNOO `/api/*` contracts remain available; new applications should use `POST /v1/generate`.
 
 ## Why this exists
 
@@ -36,6 +36,17 @@ curl -H "x-api-key: <your-key>" \
      -d '{"model":"gemini-3.5-flash","messages":[{"role":"user","content":"Hello"}]}' \
      http://localhost:8080/api/chat
 ```
+
+Unified task-aware generation uses internal Bearer authentication:
+
+```bash
+curl -H "Authorization: Bearer <internal-router-token>" \
+     -H "content-type: application/json" \
+     -d '{"taskType":"code","provider":"auto","messages":[{"role":"user","content":"Fix the TypeScript error"}]}' \
+     http://127.0.0.1:3010/v1/generate
+```
+
+Routing order is OpenAI → Anthropic → Gemini for `code`, Anthropic → OpenAI → Gemini for `reasoning` and `general`, and Gemini → OpenAI → Anthropic for `fast`. Fallback is attempted at most once per provider and only for timeouts, rate limits, provider unavailability, 5xx responses, and temporary network failures.
 
 Interactive API docs (Swagger UI) are served at `http://localhost:8080/docs` once the server is running.
 

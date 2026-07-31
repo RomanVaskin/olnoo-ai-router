@@ -21,6 +21,7 @@ import { registerHealthRoute } from './api/routes/health.route.js';
 import { registerMetricsRoute } from './api/routes/metrics.route.js';
 import { registerProvidersRoute } from './api/routes/providers.route.js';
 import { registerGenerationRoutes } from './api/routes/generation.route.js';
+import { registerGenerateRoute } from './api/routes/generate.route.js';
 import { rateLimitPlugin } from './security/rate-limit.js';
 import type { AppDependencies } from './api/dependencies.js';
 
@@ -105,6 +106,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   registerProvidersRoute(app, deps);
   registerChatRoute(app, deps);
   registerGenerationRoutes(app, deps);
+  registerGenerateRoute(app, deps);
 
   return app;
 }

@@ -15,6 +15,9 @@ export const loggerOptions: LoggerOptions = {
     paths: [
       'req.headers.authorization',
       'req.headers["x-api-key"]',
+      'req.body.messages',
+      'req.body.prompt',
+      'res.body.content',
       '*.messages',
       '*.content',
       '*.prompt',

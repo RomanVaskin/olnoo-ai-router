@@ -10,6 +10,11 @@ const healthResponseSchema = z.object({
   version: z.string(),
   uptimeSeconds: z.number().nonnegative(),
   timestamp: z.string().datetime(),
+  providers: z.object({
+    anthropic: z.boolean(),
+    openai: z.boolean(),
+    gemini: z.boolean(),
+  }),
 });
 
 export function registerHealthRoute(app: FastifyInstance, deps: AppDependencies): void {
@@ -27,6 +32,11 @@ export function registerHealthRoute(app: FastifyInstance, deps: AppDependencies)
       version: packageInfo.version,
       uptimeSeconds: Math.floor((Date.now() - deps.startedAt) / 1000),
       timestamp: new Date().toISOString(),
+      providers: {
+        anthropic: deps.registry.get('anthropic') !== undefined,
+        openai: deps.registry.get('openai') !== undefined,
+        gemini: deps.registry.get('gemini') !== undefined,
+      },
     }),
   });
 }

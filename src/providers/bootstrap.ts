@@ -1,5 +1,7 @@
 import type { Env } from '../config/env.js';
 import { GeminiProvider } from './gemini/gemini.provider.js';
+import { AnthropicProvider } from './anthropic/anthropic.provider.js';
+import { OpenAIProvider } from './openai/openai.provider.js';
 import { ProviderRegistry } from './provider.registry.js';
 
 /**
@@ -10,13 +12,33 @@ import { ProviderRegistry } from './provider.registry.js';
 export function createProviderRegistry(env: Env): ProviderRegistry {
   const registry = new ProviderRegistry();
 
-  registry.register(
-    new GeminiProvider({
-      apiKey: env.GEMINI_API_KEY,
-      enabledModels: env.GEMINI_MODELS,
-      requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
-    }),
-  );
+  if (env.GEMINI_API_KEY) {
+    registry.register(
+      new GeminiProvider({
+        apiKey: env.GEMINI_API_KEY,
+        enabledModels: env.GEMINI_MODELS,
+        requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
+      }),
+    );
+  }
+  if (env.OPENAI_API_KEY) {
+    registry.register(
+      new OpenAIProvider({
+        apiKey: env.OPENAI_API_KEY,
+        model: env.OPENAI_DEFAULT_MODEL,
+        requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
+      }),
+    );
+  }
+  if (env.ANTHROPIC_API_KEY) {
+    registry.register(
+      new AnthropicProvider({
+        apiKey: env.ANTHROPIC_API_KEY,
+        model: env.ANTHROPIC_DEFAULT_MODEL,
+        requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
+      }),
+    );
+  }
 
   return registry;
 }

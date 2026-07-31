@@ -80,10 +80,7 @@ export class GeminiProvider implements AIProvider {
         },
       };
     } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError('PROVIDER_ERROR', 'Gemini provider request failed', { cause: error });
+      throw mapGeminiError(error);
     }
   }
 
@@ -210,7 +207,22 @@ function mapGeminiError(error: unknown): AppError {
       ? new AppError('PROVIDER_QUOTA_EXHAUSTED', 'Provider quota is exhausted', { cause: error })
       : new AppError('PROVIDER_RATE_LIMITED', 'Provider rate limit exceeded', { cause: error });
   }
-  return new AppError('PROVIDER_ERROR', 'Gemini provider request failed', { cause: error });
+  if (status === 401 || status === 403) {
+    return new AppError('PROVIDER_AUTHENTICATION_ERROR', 'Gemini authentication failed', {
+      cause: error,
+    });
+  }
+  if (status === 402) {
+    return new AppError('PROVIDER_BILLING_ERROR', 'Gemini billing is unavailable', {
+      cause: error,
+    });
+  }
+  if (typeof status === 'number' && status >= 500) {
+    return new AppError('PROVIDER_UNAVAILABLE', 'Gemini is temporarily unavailable', {
+      cause: error,
+    });
+  }
+  return new AppError('PROVIDER_UNAVAILABLE', 'Gemini network request failed', { cause: error });
 }
 
 function anySignal(signals: AbortSignal[]): AbortSignal {

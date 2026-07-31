@@ -40,3 +40,12 @@ Copy [`../.env.example`](../.env.example) to `.env` to get started.
 ## Adding configuration for a new provider
 
 Add its variables to the schema in `src/config/env.ts` (fail-fast validation is the whole point — don't read `process.env` directly anywhere else), document them in `.env.example`, and pass them into the provider's constructor from `src/providers/bootstrap.ts`.
+
+# Multi-provider text routing
+
+- `OLNOO_ROUTER_TOKEN` — internal Bearer token (minimum 32 characters).
+- `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — server-side provider credentials.
+- `ANTHROPIC_DEFAULT_MODEL`, `OPENAI_DEFAULT_MODEL`, `GEMINI_DEFAULT_MODEL` — centralized defaults.
+- `PROVIDER_REQUEST_TIMEOUT_MS` — per-provider timeout; defaults to 60000.
+- `HOST` and `PORT` default to `127.0.0.1` and `3010`.
+- `API_KEYS` remains available for backward-compatible `/api/*` consumers. The internal Router token is also accepted by those legacy routes.

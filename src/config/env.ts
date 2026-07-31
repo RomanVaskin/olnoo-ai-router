@@ -14,8 +14,8 @@ const commaSeparatedList = z
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   SERVICE_NAME: z.string().min(1).default('olnoo-ai-router'),
-  PORT: z.coerce.number().int().positive().default(8080),
-  HOST: z.string().min(1).default('0.0.0.0'),
+  PORT: z.coerce.number().int().positive().default(3010),
+  HOST: z.string().min(1).default('127.0.0.1'),
   BODY_LIMIT_BYTES: z.coerce
     .number()
     .int()
@@ -24,16 +24,33 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
   // Security
-  API_KEYS: commaSeparatedList,
+  API_KEYS: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  OLNOO_ROUTER_TOKEN: z.string().min(32),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   TRUST_PROXY: z.coerce.boolean().default(false),
 
   // Provider request behavior
-  PROVIDER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
+  PROVIDER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+
+  // Default text models (official provider IDs, centrally overrideable).
+  OPENAI_DEFAULT_MODEL: z.string().min(1).default('gpt-5.2'),
+  ANTHROPIC_DEFAULT_MODEL: z.string().min(1).default('claude-sonnet-5'),
+  GEMINI_DEFAULT_MODEL: z.string().min(1).default('gemini-3.5-flash'),
+
+  OPENAI_API_KEY: z.string().default(''),
+  ANTHROPIC_API_KEY: z.string().default(''),
 
   // Gemini provider
-  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_API_KEY: z.string().default(''),
   GEMINI_MODELS: commaSeparatedList.default('gemini-3.5-flash'),
 });
 
@@ -49,7 +66,10 @@ function loadEnv(): Env {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
 
-  return parsed.data;
+  return {
+    ...parsed.data,
+    API_KEYS: [...new Set([...parsed.data.API_KEYS, parsed.data.OLNOO_ROUTER_TOKEN])],
+  };
 }
 
 export const env = loadEnv();

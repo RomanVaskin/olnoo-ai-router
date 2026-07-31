@@ -157,3 +157,11 @@ their provider's inline-request limit.
 Additional safe provider codes used by multimodal endpoints are
 `PROVIDER_RATE_LIMITED`, `PROVIDER_QUOTA_EXHAUSTED`,
 `PROVIDER_SAFETY_REJECTION`, and `PROVIDER_INVALID_RESPONSE`.
+
+# Unified generation
+
+`POST /v1/generate` accepts provider-neutral messages and is authenticated with `Authorization: Bearer <OLNOO_ROUTER_TOKEN>`. Supported providers are `auto`, `anthropic`, `openai`, and `gemini`; supported task types are `code`, `reasoning`, `fast`, and `general`.
+
+The response contains `id`, `provider`, `model`, `content`, normalized `usage`, `latencyMs`, and `fallbackUsed`. Request bodies are bounded by `BODY_LIMIT_BYTES` and validated before any provider call.
+
+`GET /health` performs no provider request. Its `providers` object only reports whether each adapter has valid configuration loaded.

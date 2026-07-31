@@ -1,5 +1,28 @@
 # Architecture
 
+## Code Agent Runtime
+
+`src/code-agent/` is a provider-neutral, stateful job layer for `code_edit`.
+It validates the project registry, serializes jobs per project, creates detached
+worktrees, invokes a code-agent adapter, records bounded events/diffs, runs
+checks, starts worktree Preview, and implements Publish-pending and Discard.
+Studio is the UI/client, Router selects and normalizes providers, and Runtime
+owns filesystem/process/Git lifecycle. Codex is the first real adapter; future
+providers implement `CodeAgentProvider` without changing the job contract.
+
+### Mandatory next protection: heavy-check queue and OOM recovery
+
+All `test`, `typecheck`, `lint`, and `build` commands must be scheduled through
+one server-wide heavy-check queue. `maxConcurrentBuilds = 1`, and parallel heavy
+checks are forbidden even across different projects/jobs. Runtime must check
+available RAM before every build and defer it below 1.5 GiB.
+
+If the kernel or process reports OOM, Runtime must persist a safe recoverable
+job failure, terminate the process group and Preview, release project and build
+locks, clean or quarantine the worktree, and support explicit recovery without
+rerunning a code-agent step that already completed successfully. This guard is
+required before expanding the project/provider allow-list.
+
 ## Product request flows
 
 Architect uses the image and multimodal structured endpoints. Studio uses the

@@ -1,5 +1,15 @@
 # API Reference
 
+## Code Agent jobs
+
+`POST /api/code-agent/jobs` accepts `taskType: "code_edit"`, `projectId`, free
+text `instruction`, opaque `attachments`, `provider`, `mode`, and `requestId`.
+The first-stage project allow-list contains only `a-istra`; `auto` selects
+Codex. `GET /api/code-agent/jobs/:jobId` returns status, events, summary,
+changed files, checks, diff and Preview path. `GET .../events` supports polling.
+`POST .../discard` stops Preview and removes the worktree. `POST .../publish`
+only moves the job to `publish_pending` and does not alter production.
+
 Base URL (local): `http://localhost:8080`
 
 Interactive, always-current docs: `GET /docs` (Swagger UI, generated from the same Zod schemas that validate requests — see `pnpm openapi:print` to export `docs/openapi.json`).

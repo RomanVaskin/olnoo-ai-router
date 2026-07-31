@@ -45,6 +45,12 @@ const envSchema = z.object({
   AI_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
   AI_DEFAULT_PROVIDER: z.enum(['gemini', 'openai', 'anthropic']).default('gemini'),
   AI_FALLBACK_ENABLED: booleanString.default('true'),
+  CODE_AGENT_ENABLED: booleanString.default('true'),
+  CODE_AGENT_WORKTREE_ROOT: z.string().min(1).default('/opt/olnoo/worktrees'),
+  CODE_AGENT_TIMEOUT_MS: z.coerce.number().int().positive().default(900_000),
+  CODE_AGENT_MAX_LOG_BYTES: z.coerce.number().int().positive().default(1_000_000),
+  CODE_AGENT_MAX_DIFF_BYTES: z.coerce.number().int().positive().default(2_000_000),
+  CODE_AGENT_MAX_CHANGED_FILES: z.coerce.number().int().positive().default(100),
 
   // Default text models (official provider IDs, centrally overrideable).
   OPENAI_DEFAULT_MODEL: z.string().min(1).default('gpt-5.2'),

@@ -22,6 +22,8 @@ import { registerMetricsRoute } from './api/routes/metrics.route.js';
 import { registerProvidersRoute } from './api/routes/providers.route.js';
 import { registerGenerationRoutes } from './api/routes/generation.route.js';
 import { registerGenerateRoute } from './api/routes/generate.route.js';
+import { registerCodeAgentRoutes } from './api/routes/code-agent.route.js';
+import { CodeAgentRuntime } from './code-agent/runtime.js';
 import { rateLimitPlugin } from './security/rate-limit.js';
 import type { AppDependencies } from './api/dependencies.js';
 
@@ -99,6 +101,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     router,
     metrics,
     startedAt: Date.now(),
+    codeAgentRuntime: new CodeAgentRuntime(env, app.log),
   };
 
   registerHealthRoute(app, deps);
@@ -107,6 +110,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   registerChatRoute(app, deps);
   registerGenerationRoutes(app, deps);
   registerGenerateRoute(app, deps);
+  registerCodeAgentRoutes(app, deps);
 
   return app;
 }

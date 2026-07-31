@@ -45,9 +45,32 @@
                     "timestamp": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "providers": {
+                      "type": "object",
+                      "properties": {
+                        "anthropic": {
+                          "type": "boolean"
+                        },
+                        "openai": {
+                          "type": "boolean"
+                        },
+                        "gemini": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["anthropic", "openai", "gemini"],
+                      "additionalProperties": false
                     }
                   },
-                  "required": ["status", "service", "version", "uptimeSeconds", "timestamp"],
+                  "required": [
+                    "status",
+                    "service",
+                    "version",
+                    "uptimeSeconds",
+                    "timestamp",
+                    "providers"
+                  ],
                   "additionalProperties": false
                 }
               }
@@ -281,6 +304,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -311,6 +337,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -341,6 +370,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -371,6 +403,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -401,6 +436,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -431,6 +469,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -461,6 +502,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -611,6 +655,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -641,6 +688,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -671,6 +721,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -701,6 +754,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -731,6 +787,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -761,6 +820,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -791,6 +853,42 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -821,6 +919,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -849,8 +950,8 @@
                 "properties": {
                   "provider": {
                     "type": "string",
-                    "minLength": 1,
-                    "maxLength": 64
+                    "enum": ["auto", "gemini", "openai", "anthropic"],
+                    "default": "auto"
                   },
                   "model": {
                     "type": "string",
@@ -888,6 +989,21 @@
                     "maxItems": 4,
                     "default": []
                   },
+                  "taskType": {
+                    "type": "string",
+                    "enum": [
+                      "general",
+                      "fast",
+                      "reasoning",
+                      "code",
+                      "structured",
+                      "analysis",
+                      "creative"
+                    ]
+                  },
+                  "allowFallback": {
+                    "type": "boolean"
+                  },
                   "jsonSchema": {
                     "type": "object",
                     "additionalProperties": {}
@@ -919,7 +1035,7 @@
                     "additionalProperties": false
                   }
                 },
-                "required": ["model", "prompt", "jsonSchema"],
+                "required": ["prompt", "jsonSchema"],
                 "additionalProperties": false
               }
             }
@@ -949,6 +1065,58 @@
                     },
                     "content": {
                       "type": "string"
+                    },
+                    "output": {},
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "inputTokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "nullable": true
+                        },
+                        "outputTokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "nullable": true
+                        },
+                        "totalTokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "nullable": true
+                        }
+                      },
+                      "required": ["inputTokens", "outputTokens", "totalTokens"],
+                      "additionalProperties": false
+                    },
+                    "finishReason": {
+                      "type": "string"
+                    },
+                    "fallback": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "boolean"
+                        },
+                        "attempts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "provider": {
+                                "type": "string"
+                              },
+                              "errorCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["provider"],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": ["used", "attempts"],
+                      "additionalProperties": false
                     },
                     "latencyMs": {
                       "type": "integer",
@@ -990,6 +1158,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -1020,6 +1191,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -1050,6 +1224,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -1080,6 +1257,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -1110,6 +1290,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -1140,6 +1323,9 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -1170,6 +1356,42 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],
@@ -1200,6 +1422,458 @@
                         },
                         "requestId": {
                           "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/generate": {
+      "post": {
+        "summary": "Generate text using task-aware provider routing and bounded fallback",
+        "tags": ["Generation"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "taskType": {
+                    "type": "string",
+                    "enum": ["code", "reasoning", "fast", "general"],
+                    "default": "general"
+                  },
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": ["system", "user", "assistant"]
+                        },
+                        "content": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 32000
+                        }
+                      },
+                      "required": ["role", "content"],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 64
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": ["auto", "anthropic", "openai", "gemini"],
+                    "default": "auto"
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "nullable": true,
+                    "default": null
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "maxTokens": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0,
+                    "maximum": 32000
+                  },
+                  "allowFallback": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {
+                      "application": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "requestId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+                      }
+                    },
+                    "required": ["application"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["messages"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string",
+                      "enum": ["anthropic", "openai", "gemini"]
+                    },
+                    "model": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "inputTokens": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "outputTokens": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "totalTokens": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["inputTokens", "outputTokens", "totalTokens"],
+                      "additionalProperties": false
+                    },
+                    "latencyMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "fallbackUsed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "provider",
+                    "model",
+                    "content",
+                    "usage",
+                    "latencyMs",
+                    "fallbackUsed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["code", "message", "requestId"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["code", "message", "requestId"],

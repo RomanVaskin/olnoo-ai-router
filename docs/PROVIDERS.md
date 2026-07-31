@@ -53,6 +53,21 @@ registry.register(
   the caller-provided JSON schema. Both operations preserve the same timeout,
   cancellation, secret handling, safe-error, and logging guarantees as chat.
 
+## Structured routing
+
+`StructuredRouter` validates provider JSON with the caller's JSON Schema before
+returning it. Auto mode selects a provider from `taskType`; general requests use
+`AI_DEFAULT_PROVIDER`. Timeouts, rate limits, availability failures, and generic
+provider failures can fall back to the remaining configured providers. Safety,
+authentication, request-validation, model, and output-schema failures do not
+fall back. Each response reports the attempted providers without exposing raw
+SDK errors.
+
+OpenAI structured output uses the Responses API JSON Schema format. Anthropic
+uses its native JSON Schema output format. Gemini uses JSON response MIME type
+and its schema configuration. Provider usage and request identifiers are
+normalized by the adapter for safe operational logging.
+
 ## Adding a new provider (Stage 2+)
 
 1. `mkdir src/providers/<vendor>` and add `<vendor>.provider.ts` implementing `AIProvider`, plus any mapper/model-catalog files it needs — mirror `src/providers/gemini/`.

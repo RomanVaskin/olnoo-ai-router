@@ -80,6 +80,11 @@ export class FakeProvider implements AIProvider {
     options: ProviderChatOptions,
   ): Promise<ProviderStructuredGenerationOutput> {
     if (this.structuredImpl) return this.structuredImpl(input, options);
-    return { model: input.model, content: '{"ok":true}' };
+    return {
+      model: input.model,
+      content: '{"ok":true}',
+      finishReason: 'stop',
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+    };
   }
 }

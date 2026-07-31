@@ -26,9 +26,16 @@ Copy [`../.env.example`](../.env.example) to `.env` to get started.
 
 ## Provider request behavior
 
-| Variable                      | Default  | Notes                                                                                               |
-| ----------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
-| `PROVIDER_REQUEST_TIMEOUT_MS` | `120000` | Applied to every outbound provider call; exceeding it returns `504 PROVIDER_TIMEOUT` to the caller. |
+| Variable                      | Default | Notes                                                                                               |
+| ----------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `PROVIDER_REQUEST_TIMEOUT_MS` | `60000` | Applied to every outbound provider call; exceeding it returns `504 PROVIDER_TIMEOUT` to the caller. |
+
+`AI_PROVIDER_TIMEOUT_MS` is a compatibility override for
+`PROVIDER_REQUEST_TIMEOUT_MS`. Structured generation also uses
+`AI_DEFAULT_PROVIDER` (`gemini`, `openai`, or `anthropic`; default `gemini`) and
+`AI_FALLBACK_ENABLED` (`true` by default). `ANTHROPIC_MODEL`, `OPENAI_MODEL`,
+and `GEMINI_MODEL` override their corresponding `*_DEFAULT_MODEL` values when
+set.
 
 ## Gemini provider
 
@@ -47,5 +54,7 @@ Add its variables to the schema in `src/config/env.ts` (fail-fast validation is 
 - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` — server-side provider credentials.
 - `ANTHROPIC_DEFAULT_MODEL`, `OPENAI_DEFAULT_MODEL`, `GEMINI_DEFAULT_MODEL` — centralized defaults.
 - `PROVIDER_REQUEST_TIMEOUT_MS` — per-provider timeout; defaults to 60000.
+- `AI_DEFAULT_PROVIDER` — primary provider for general structured requests in auto mode.
+- `AI_FALLBACK_ENABLED` — enables retryable structured-request fallback chains.
 - `HOST` and `PORT` default to `127.0.0.1` and `3010`.
 - `API_KEYS` remains available for backward-compatible `/api/*` consumers. The internal Router token is also accepted by those legacy routes.

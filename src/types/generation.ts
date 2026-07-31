@@ -32,6 +32,12 @@ export const imageGenerationResponseSchema = z.object({
 export type ImageGenerationResponse = z.infer<typeof imageGenerationResponseSchema>;
 
 export const structuredGenerationRequestSchema = multimodalRequestBaseSchema.extend({
+  provider: z.enum(['auto', 'gemini', 'openai', 'anthropic']).default('auto'),
+  model: z.string().min(1).max(128).optional(),
+  taskType: z
+    .enum(['general', 'fast', 'reasoning', 'code', 'structured', 'analysis', 'creative'])
+    .optional(),
+  allowFallback: z.boolean().optional(),
   // Structured generation also serves text-only product workflows.
   // Image generation above still requires at least one source image.
   images: z.array(inlineImageSchema).max(4).default([]),
@@ -52,6 +58,21 @@ export const structuredGenerationResponseSchema = z.object({
   provider: z.string(),
   model: z.string(),
   content: z.string(),
+  output: z.unknown().optional(),
+  usage: z
+    .object({
+      inputTokens: z.number().int().nonnegative().nullable(),
+      outputTokens: z.number().int().nonnegative().nullable(),
+      totalTokens: z.number().int().nonnegative().nullable(),
+    })
+    .optional(),
+  finishReason: z.string().optional(),
+  fallback: z
+    .object({
+      used: z.boolean(),
+      attempts: z.array(z.object({ provider: z.string(), errorCode: z.string().optional() })),
+    })
+    .optional(),
   latencyMs: z.number().int().nonnegative(),
   createdAt: z.string().datetime(),
 });

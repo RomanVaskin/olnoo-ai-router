@@ -20,6 +20,7 @@ export interface ProviderChatOutput {
   content: string;
   finishReason: FinishReason;
   usage: ChatUsage;
+  providerRequestId?: string;
 }
 
 export interface ProviderChatOptions {
@@ -50,6 +51,9 @@ export interface ProviderStructuredGenerationInput {
 export interface ProviderStructuredGenerationOutput {
   model: string;
   content: string;
+  usage: ChatUsage;
+  finishReason: FinishReason;
+  providerRequestId?: string;
 }
 
 /**

@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { AppError } from '../../errors/app-error.js';
 import type {
   AIProvider,
@@ -10,22 +11,23 @@ import type {
   ProviderStructuredGenerationInput,
   ProviderStructuredGenerationOutput,
 } from '../provider.interface.js';
-import { mapProviderHttpError, mapProviderNetworkError } from '../http-errors.js';
 import { withTimeout } from '../with-timeout.js';
 
-interface AnthropicResponse {
-  model?: string;
-  content?: Array<{ type?: string; text?: string }>;
-  stop_reason?: string;
-  usage?: { input_tokens?: number; output_tokens?: number };
+export interface AnthropicProviderConfig {
+  apiKey: string;
+  model: string;
+  requestTimeoutMs: number;
+  client?: Anthropic;
 }
 
 export class AnthropicProvider implements AIProvider {
   readonly name = 'anthropic';
+  private readonly client: Anthropic;
 
-  constructor(
-    private readonly config: { apiKey: string; model: string; requestTimeoutMs: number },
-  ) {}
+  constructor(private readonly config: AnthropicProviderConfig) {
+    this.client =
+      config.client ?? new Anthropic({ apiKey: config.apiKey, timeout: config.requestTimeoutMs });
+  }
 
   listModels(): ProviderModelInfo[] {
     return [{ id: this.config.model, label: this.config.model }];
@@ -37,58 +39,45 @@ export class AnthropicProvider implements AIProvider {
 
   async chat(input: ProviderChatInput, options: ProviderChatOptions): Promise<ProviderChatOutput> {
     const system = input.messages
-      .filter((message) => message.role === 'system')
-      .map((message) => message.content)
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
       .join('\n\n');
-    const messages = input.messages.filter((message) => message.role !== 'system');
+    const messages = input.messages.filter((m) => m.role !== 'system');
     try {
-      return await withTimeout(
-        async (timeoutSignal) => {
-          const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'x-api-key': this.config.apiKey,
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json',
-            },
-            body: JSON.stringify({
+      const response = await withTimeout(
+        (timeoutSignal) =>
+          this.client.messages.create(
+            {
               model: input.model,
-              messages,
               max_tokens: input.maxOutputTokens ?? 2_000,
+              messages,
               ...(system ? { system } : {}),
               ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
               ...(input.topP !== undefined ? { top_p: input.topP } : {}),
-            }),
-            signal: AbortSignal.any([timeoutSignal, options.signal]),
-          });
-          if (!response.ok) throw mapProviderHttpError('Anthropic', response.status);
-          const body = (await response.json()) as AnthropicResponse;
-          const content =
-            body.content
-              ?.filter((part) => part.type === 'text')
-              .map((part) => part.text ?? '')
-              .join('') ?? '';
-          if (!content) {
-            throw new AppError('PROVIDER_INVALID_RESPONSE', 'Anthropic returned no content');
-          }
-          const inputTokens = body.usage?.input_tokens ?? 0;
-          const outputTokens = body.usage?.output_tokens ?? 0;
-          return {
-            model: body.model ?? input.model,
-            content,
-            finishReason: body.stop_reason === 'max_tokens' ? 'length' : 'stop',
-            usage: {
-              promptTokens: inputTokens,
-              completionTokens: outputTokens,
-              totalTokens: inputTokens + outputTokens,
             },
-          };
-        },
+            { signal: AbortSignal.any([timeoutSignal, options.signal]) },
+          ),
         this.config.requestTimeoutMs,
         this.name,
       );
+      if (response.stop_reason === 'refusal') {
+        throw new AppError('PROVIDER_SAFETY_REJECTION', 'Provider refused the request');
+      }
+      const content = response.content
+        .filter((part) => part.type === 'text')
+        .map((part) => part.text)
+        .join('');
+      if (!content)
+        throw new AppError('PROVIDER_INVALID_RESPONSE', 'Anthropic returned no content');
+      return {
+        model: response.model,
+        content,
+        finishReason: response.stop_reason === 'max_tokens' ? 'length' : 'stop',
+        usage: normalizeUsage(response.usage),
+        ...(response._request_id ? { providerRequestId: response._request_id } : {}),
+      };
     } catch (error) {
-      throw mapProviderNetworkError('Anthropic', error);
+      throw mapAnthropicError(error);
     }
   }
 
@@ -96,20 +85,43 @@ export class AnthropicProvider implements AIProvider {
     input: ProviderStructuredGenerationInput,
     options: ProviderChatOptions,
   ): Promise<ProviderStructuredGenerationOutput> {
-    const output = await this.chat(
-      {
-        model: input.model,
-        messages: [
-          {
-            role: 'user',
-            content: `${input.prompt}\n\nReturn JSON matching this schema:\n${JSON.stringify(input.jsonSchema)}`,
-          },
-        ],
-        ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
-      },
-      options,
-    );
-    return { model: output.model, content: output.content };
+    try {
+      const response = await withTimeout(
+        (timeoutSignal) =>
+          this.client.messages.create(
+            {
+              model: input.model,
+              max_tokens: 2_000,
+              messages: [{ role: 'user', content: input.prompt }],
+              output_config: {
+                format: { type: 'json_schema', schema: input.jsonSchema },
+              },
+              ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
+            },
+            { signal: AbortSignal.any([timeoutSignal, options.signal]) },
+          ),
+        this.config.requestTimeoutMs,
+        this.name,
+      );
+      if (response.stop_reason === 'refusal') {
+        throw new AppError('PROVIDER_SAFETY_REJECTION', 'Provider refused the request');
+      }
+      const content = response.content
+        .filter((part) => part.type === 'text')
+        .map((part) => part.text)
+        .join('');
+      if (!content)
+        throw new AppError('PROVIDER_INVALID_RESPONSE', 'Anthropic returned no structured content');
+      return {
+        model: response.model,
+        content,
+        finishReason: response.stop_reason === 'max_tokens' ? 'length' : 'stop',
+        usage: normalizeUsage(response.usage),
+        ...(response._request_id ? { providerRequestId: response._request_id } : {}),
+      };
+    } catch (error) {
+      throw mapAnthropicError(error);
+    }
   }
 
   generateImage(
@@ -120,4 +132,43 @@ export class AnthropicProvider implements AIProvider {
       new AppError('MODEL_NOT_FOUND', 'Anthropic image generation is not enabled'),
     );
   }
+}
+
+function normalizeUsage(usage: { input_tokens: number; output_tokens: number }) {
+  return {
+    promptTokens: usage.input_tokens,
+    completionTokens: usage.output_tokens,
+    totalTokens: usage.input_tokens + usage.output_tokens,
+  };
+}
+
+function mapAnthropicError(error: unknown): AppError {
+  if (error instanceof AppError) return error;
+  if (error instanceof Anthropic.APIConnectionTimeoutError) {
+    return new AppError('PROVIDER_TIMEOUT', 'Anthropic request timed out', { cause: error });
+  }
+  if (error instanceof Anthropic.APIConnectionError) {
+    return new AppError('PROVIDER_UNAVAILABLE', 'Anthropic network request failed', {
+      cause: error,
+    });
+  }
+  if (error instanceof Anthropic.APIError) {
+    if (error.status === 401 || error.status === 403) {
+      return new AppError('PROVIDER_AUTHENTICATION_ERROR', 'Anthropic authentication failed', {
+        cause: error,
+      });
+    }
+    if (error.status === 429) {
+      return new AppError('PROVIDER_RATE_LIMITED', 'Anthropic rate limit exceeded', {
+        cause: error,
+      });
+    }
+    if (error.status >= 500) {
+      return new AppError('PROVIDER_UNAVAILABLE', 'Anthropic is temporarily unavailable', {
+        cause: error,
+      });
+    }
+    return new AppError('VALIDATION_ERROR', 'Anthropic rejected the request', { cause: error });
+  }
+  return new AppError('PROVIDER_UNAVAILABLE', 'Anthropic network request failed', { cause: error });
 }

@@ -11,6 +11,8 @@ const commaSeparatedList = z
       .filter((item) => item.length > 0),
   );
 
+const booleanString = z.enum(['true', 'false']).transform((value) => value === 'true');
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   SERVICE_NAME: z.string().min(1).default('olnoo-ai-router'),
@@ -40,11 +42,17 @@ const envSchema = z.object({
 
   // Provider request behavior
   PROVIDER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  AI_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+  AI_DEFAULT_PROVIDER: z.enum(['gemini', 'openai', 'anthropic']).default('gemini'),
+  AI_FALLBACK_ENABLED: booleanString.default('true'),
 
   // Default text models (official provider IDs, centrally overrideable).
   OPENAI_DEFAULT_MODEL: z.string().min(1).default('gpt-5.2'),
   ANTHROPIC_DEFAULT_MODEL: z.string().min(1).default('claude-sonnet-5'),
   GEMINI_DEFAULT_MODEL: z.string().min(1).default('gemini-3.5-flash'),
+  OPENAI_MODEL: z.string().min(1).optional(),
+  ANTHROPIC_MODEL: z.string().min(1).optional(),
+  GEMINI_MODEL: z.string().min(1).optional(),
 
   OPENAI_API_KEY: z.string().default(''),
   ANTHROPIC_API_KEY: z.string().default(''),
@@ -68,6 +76,11 @@ function loadEnv(): Env {
 
   return {
     ...parsed.data,
+    PROVIDER_REQUEST_TIMEOUT_MS:
+      parsed.data.AI_PROVIDER_TIMEOUT_MS ?? parsed.data.PROVIDER_REQUEST_TIMEOUT_MS,
+    OPENAI_DEFAULT_MODEL: parsed.data.OPENAI_MODEL ?? parsed.data.OPENAI_DEFAULT_MODEL,
+    ANTHROPIC_DEFAULT_MODEL: parsed.data.ANTHROPIC_MODEL ?? parsed.data.ANTHROPIC_DEFAULT_MODEL,
+    GEMINI_DEFAULT_MODEL: parsed.data.GEMINI_MODEL ?? parsed.data.GEMINI_DEFAULT_MODEL,
     API_KEYS: [...new Set([...parsed.data.API_KEYS, parsed.data.OLNOO_ROUTER_TOKEN])],
   };
 }

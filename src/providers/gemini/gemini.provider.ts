@@ -174,7 +174,18 @@ export class GeminiProvider implements AIProvider {
       if (!response.text) {
         throw new AppError('PROVIDER_INVALID_RESPONSE', 'Provider returned no structured content');
       }
-      return { model: input.model, content: response.text };
+      const usage = response.usageMetadata;
+      return {
+        model: input.model,
+        content: response.text,
+        finishReason: toFinishReason(response.candidates?.[0]?.finishReason),
+        usage: {
+          promptTokens: usage?.promptTokenCount ?? 0,
+          completionTokens: usage?.candidatesTokenCount ?? 0,
+          totalTokens: usage?.totalTokenCount ?? 0,
+        },
+        ...(response.responseId ? { providerRequestId: response.responseId } : {}),
+      };
     } catch (error) {
       throw mapGeminiError(error);
     }

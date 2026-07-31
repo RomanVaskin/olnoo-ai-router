@@ -10,6 +10,8 @@ export type AppErrorCode =
   | 'PROVIDER_UNAVAILABLE'
   | 'PROVIDER_SAFETY_REJECTION'
   | 'PROVIDER_INVALID_RESPONSE'
+  | 'STRUCTURED_OUTPUT_VALIDATION_ERROR'
+  | 'ALL_PROVIDERS_FAILED'
   | 'PROVIDER_ERROR'
   | 'PROVIDER_TIMEOUT'
   | 'INTERNAL_ERROR'
@@ -27,6 +29,8 @@ const STATUS_BY_CODE: Record<AppErrorCode, number> = {
   PROVIDER_UNAVAILABLE: 503,
   PROVIDER_SAFETY_REJECTION: 422,
   PROVIDER_INVALID_RESPONSE: 502,
+  STRUCTURED_OUTPUT_VALIDATION_ERROR: 502,
+  ALL_PROVIDERS_FAILED: 503,
   PROVIDER_ERROR: 502,
   PROVIDER_TIMEOUT: 504,
   INTERNAL_ERROR: 500,
@@ -43,12 +47,27 @@ export class AppError extends Error {
   readonly code: AppErrorCode;
   readonly statusCode: number;
   override readonly cause?: unknown;
+  readonly retryable: boolean;
 
-  constructor(code: AppErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: AppErrorCode,
+    message: string,
+    options?: { cause?: unknown; retryable?: boolean },
+  ) {
     super(message);
     this.name = 'AppError';
     this.code = code;
     this.statusCode = STATUS_BY_CODE[code];
     this.cause = options?.cause;
+    this.retryable = options?.retryable ?? RETRYABLE_CODES.has(code);
   }
 }
+
+const RETRYABLE_CODES = new Set<AppErrorCode>([
+  'RATE_LIMITED',
+  'PROVIDER_RATE_LIMITED',
+  'PROVIDER_UNAVAILABLE',
+  'PROVIDER_ERROR',
+  'PROVIDER_TIMEOUT',
+  'ALL_PROVIDERS_FAILED',
+]);

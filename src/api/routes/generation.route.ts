@@ -13,8 +13,20 @@ import {
 } from '../../types/generation.js';
 import type { AIProvider } from '../../providers/provider.interface.js';
 import type { AppDependencies } from '../dependencies.js';
+import { StructuredRouter } from '../../router/structured-router.js';
+import { RoutingPolicy } from '../../router/routing-policy.js';
 
 export function registerGenerationRoutes(app: FastifyInstance, deps: AppDependencies): void {
+  const structuredRouter = new StructuredRouter(
+    deps.registry,
+    {
+      gemini: deps.env.GEMINI_DEFAULT_MODEL,
+      openai: deps.env.OPENAI_DEFAULT_MODEL,
+      anthropic: deps.env.ANTHROPIC_DEFAULT_MODEL,
+    },
+    new RoutingPolicy(deps.env.AI_DEFAULT_PROVIDER),
+    deps.env.AI_FALLBACK_ENABLED,
+  );
   app.withTypeProvider<ZodTypeProvider>().route({
     method: 'POST',
     url: '/api/images/generate',
@@ -58,29 +70,51 @@ export function registerGenerationRoutes(app: FastifyInstance, deps: AppDependen
       body: structuredGenerationRequestSchema,
       response: responseSchemas(structuredGenerationResponseSchema),
     },
-    handler: async (request) =>
-      runProviderRequest(request, request.body, deps, async (provider, signal, startedAt) => {
-        const body = request.body;
-        const output = await provider.generateStructured(
-          {
-            model: body.model,
-            prompt: body.prompt,
-            images: body.images,
-            jsonSchema: body.jsonSchema,
-            ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
-          },
-          { signal },
-        );
+    handler: async (request) => {
+      const startedAt = process.hrtime.bigint();
+      const controller = new AbortController();
+      const abortOnDisconnect = (): void => controller.abort();
+      request.raw.once('close', abortOnDisconnect);
+      try {
+        const result = await structuredRouter.generate(request.body, controller.signal);
+        const output = result.output;
         const response: StructuredGenerationResponse = {
           requestId: request.id,
-          provider: provider.name,
+          provider: result.provider,
           model: output.model,
           content: output.content,
+          output: result.parsed,
+          usage: {
+            inputTokens: output.usage.promptTokens,
+            outputTokens: output.usage.completionTokens,
+            totalTokens: output.usage.totalTokens,
+          },
+          finishReason: output.finishReason,
+          fallback: { used: result.attempts.length > 1, attempts: result.attempts },
           latencyMs: elapsedMs(startedAt),
           createdAt: new Date().toISOString(),
         };
+        request.log.info(
+          {
+            module: request.body.metadata?.module,
+            projectId: request.body.metadata?.projectId,
+            provider: result.provider,
+            model: output.model,
+            taskType: request.body.taskType ?? 'general',
+            duration: response.latencyMs,
+            status: 'success',
+            inputTokens: output.usage.promptTokens,
+            outputTokens: output.usage.completionTokens,
+            fallbackAttempts: result.attempts.length,
+            providerRequestId: output.providerRequestId,
+          },
+          'structured generation completed',
+        );
         return response;
-      }),
+      } finally {
+        request.raw.off('close', abortOnDisconnect);
+      }
+    },
   });
 }
 
@@ -96,6 +130,7 @@ function responseSchemas(
     429: errorResponseSchema,
     500: errorResponseSchema,
     502: errorResponseSchema,
+    503: errorResponseSchema,
     504: errorResponseSchema,
   };
 }

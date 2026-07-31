@@ -7,7 +7,15 @@ import { FakeProvider } from '../fakes/fake-provider.js';
 const API_KEY = process.env.API_KEYS as string;
 const IMAGE = { mimeType: 'image/png', data: Buffer.from('image').toString('base64') };
 
-async function buildTestApp(provider = new FakeProvider()): Promise<FastifyInstance> {
+async function buildTestApp(
+  provider = new FakeProvider({
+    name: 'gemini',
+    models: [
+      { id: 'fake-model', label: 'Fake Model' },
+      { id: 'gemini-3.5-flash', label: 'Default Gemini Model' },
+    ],
+  }),
+): Promise<FastifyInstance> {
   const registry = new ProviderRegistry();
   registry.register(provider);
   const app = await buildApp({ registry });
@@ -32,7 +40,7 @@ describe('multimodal generation routes', () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      provider: 'fake',
+      provider: 'gemini',
       model: 'fake-model',
       mimeType: 'image/png',
       warnings: [],
@@ -55,9 +63,12 @@ describe('multimodal generation routes', () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      provider: 'fake',
+      provider: 'gemini',
       model: 'fake-model',
       content: '{"ok":true}',
+      output: { ok: true },
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      fallback: { used: false, attempts: [{ provider: 'gemini' }] },
     });
   });
 

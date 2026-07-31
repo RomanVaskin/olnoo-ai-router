@@ -147,8 +147,17 @@ Generate schema-constrained JSON from a prompt and optional 1–4 inline images.
 Requires `x-api-key`. Text-only callers may omit `images` or pass an empty
 array. The request adds `jsonSchema`, optional `temperature`,
 `expectedFormat: "json"`, and safe correlation metadata (`module` and optional
-`projectId`); the response returns the JSON document as `content` plus
-provider/model metadata. End-to-end correlation uses the `x-request-id` header.
+`projectId`). It also accepts `provider` (`auto`, `gemini`, `openai`, or
+`anthropic`), an optional provider-specific `model`, `taskType`, and
+`allowFallback`. Auto routing uses the configured default for general work and
+task-specific routing for fast, reasoning, code, structured, analysis, and
+creative work. Retryable provider failures may fall back through at most three
+providers.
+
+The response returns both the provider JSON string in `content` and its parsed,
+schema-validated value in `output`, with normalized token `usage`,
+`finishReason`, and a `fallback` attempt summary. End-to-end correlation uses
+the `x-request-id` header.
 
 These endpoints are non-streaming in Stage 1. Large multimodal JSON bodies are
 bounded by `BODY_LIMIT_BYTES`; callers should keep decoded image payloads within
@@ -156,7 +165,9 @@ their provider's inline-request limit.
 
 Additional safe provider codes used by multimodal endpoints are
 `PROVIDER_RATE_LIMITED`, `PROVIDER_QUOTA_EXHAUSTED`,
-`PROVIDER_SAFETY_REJECTION`, and `PROVIDER_INVALID_RESPONSE`.
+`PROVIDER_SAFETY_REJECTION`, `PROVIDER_INVALID_RESPONSE`,
+`STRUCTURED_OUTPUT_VALIDATION_ERROR`, and `ALL_PROVIDERS_FAILED`. Error
+responses include a `retryable` flag.
 
 # Unified generation
 

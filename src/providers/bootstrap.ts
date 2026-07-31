@@ -16,7 +16,7 @@ export function createProviderRegistry(env: Env): ProviderRegistry {
     registry.register(
       new GeminiProvider({
         apiKey: env.GEMINI_API_KEY,
-        enabledModels: env.GEMINI_MODELS,
+        enabledModels: [...new Set([...env.GEMINI_MODELS, env.GEMINI_DEFAULT_MODEL])],
         requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
       }),
     );

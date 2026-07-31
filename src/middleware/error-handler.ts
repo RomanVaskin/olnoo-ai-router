@@ -41,6 +41,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
         code: appError.code,
         message: appError.message,
         requestId: request.id,
+        retryable: appError.retryable,
       },
     };
 

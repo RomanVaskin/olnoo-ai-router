@@ -15,7 +15,7 @@ export function toGeminiContents(messages: ChatMessage[]): GeminiContents {
   const contents: Content[] = [];
 
   for (const message of messages) {
-    if (message.role === 'system') {
+    if (message.role === 'system' || message.role === 'developer') {
       systemParts.push(message.content);
       continue;
     }

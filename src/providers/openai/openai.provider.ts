@@ -68,7 +68,7 @@ export class OpenAIProvider implements AIProvider {
         );
         if (refused)
           throw new AppError('PROVIDER_SAFETY_REJECTION', 'Provider refused the request');
-        throw new AppError('PROVIDER_INVALID_RESPONSE', 'OpenAI returned no content');
+        throw new AppError('INVALID_PROVIDER_RESPONSE', 'OpenAI returned no content');
       }
       return {
         model: response.model,
@@ -114,7 +114,7 @@ export class OpenAIProvider implements AIProvider {
         );
         if (refused)
           throw new AppError('PROVIDER_SAFETY_REJECTION', 'Provider refused the request');
-        throw new AppError('PROVIDER_INVALID_RESPONSE', 'OpenAI returned no structured content');
+        throw new AppError('INVALID_PROVIDER_RESPONSE', 'OpenAI returned no structured content');
       }
       return {
         model: response.model,
@@ -158,7 +158,7 @@ function mapOpenAIError(error: unknown): AppError {
   }
   if (error instanceof OpenAI.APIError) {
     if (error.status === 401 || error.status === 403) {
-      return new AppError('PROVIDER_AUTHENTICATION_ERROR', 'OpenAI authentication failed', {
+      return new AppError('PROVIDER_AUTH_FAILED', 'OpenAI authentication failed', {
         cause: error,
       });
     }

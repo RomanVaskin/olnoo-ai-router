@@ -38,14 +38,14 @@ Send a chat completion request through the router to an AI provider. **Requires 
 }
 ```
 
-| Field             | Type    | Required | Notes                                                                                                                 |
-| ----------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------- |
-| `provider`        | string  | no       | Explicit provider name (e.g. `"gemini"`). Omit to let the router pick whichever registered provider supports `model`. |
-| `model`           | string  | yes      | Must be one of the models the resolved provider is configured to serve (see `GET /providers`).                        |
-| `messages`        | array   | yes      | 1–64 messages, each `{ role: "system" \| "user" \| "assistant", content: string }`. Content is 1–32,000 characters.   |
-| `temperature`     | number  | no       | 0–2.                                                                                                                  |
-| `maxOutputTokens` | integer | no       | 1–32,000.                                                                                                             |
-| `topP`            | number  | no       | 0–1.                                                                                                                  |
+| Field             | Type    | Required | Notes                                                                                                                              |
+| ----------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `provider`        | string  | no       | Explicit provider name (e.g. `"gemini"`). Omit to let the router pick whichever registered provider supports `model`.              |
+| `model`           | string  | yes      | Must be one of the models the resolved provider is configured to serve (see `GET /providers`).                                     |
+| `messages`        | array   | yes      | 1–64 messages, each `{ role: "system" \| "developer" \| "user" \| "assistant", content: string }`. Content is 1–32,000 characters. |
+| `temperature`     | number  | no       | 0–2.                                                                                                                               |
+| `maxOutputTokens` | integer | no       | 1–32,000.                                                                                                                          |
+| `topP`            | number  | no       | 0–1.                                                                                                                               |
 
 ### Response — `200 OK`
 
@@ -173,9 +173,10 @@ These endpoints are non-streaming in Stage 1. Large multimodal JSON bodies are
 bounded by `BODY_LIMIT_BYTES`; callers should keep decoded image payloads within
 their provider's inline-request limit.
 
-Additional safe provider codes used by multimodal endpoints are
-`PROVIDER_RATE_LIMITED`, `PROVIDER_QUOTA_EXHAUSTED`,
+Additional safe provider codes are `PROVIDER_NOT_CONFIGURED`,
+`PROVIDER_AUTH_FAILED`, `PROVIDER_RATE_LIMITED`, `PROVIDER_QUOTA_EXHAUSTED`,
 `PROVIDER_SAFETY_REJECTION`, `PROVIDER_INVALID_RESPONSE`,
+`INVALID_PROVIDER_RESPONSE`,
 `STRUCTURED_OUTPUT_VALIDATION_ERROR`, and `ALL_PROVIDERS_FAILED`. Error
 responses include a `retryable` flag.
 
@@ -183,6 +184,11 @@ responses include a `retryable` flag.
 
 `POST /v1/generate` accepts provider-neutral messages and is authenticated with `Authorization: Bearer <OLNOO_ROUTER_TOKEN>`. Supported providers are `auto`, `anthropic`, `openai`, and `gemini`; supported task types are `code`, `reasoning`, `fast`, and `general`.
 
-The response contains `id`, `provider`, `model`, `content`, normalized `usage`, `latencyMs`, and `fallbackUsed`. Request bodies are bounded by `BODY_LIMIT_BYTES` and validated before any provider call.
+The response contains backward-compatible `id`, normalized `requestId`,
+`provider`, `model`, `content`, `usage`, `latencyMs`, `fallbackUsed`, and an
+optional upstream `providerRequestId`. If `provider` is omitted,
+`metadata.application: "olnoo-assistant"` defaults to OpenAI; existing clients
+keep the prior automatic route. An explicit provider never falls back unless
+the caller explicitly sets `allowFallback: true`.
 
 `GET /health` performs no provider request. Its `providers` object only reports whether each adapter has valid configuration loaded.

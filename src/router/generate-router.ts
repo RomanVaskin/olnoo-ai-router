@@ -37,7 +37,10 @@ export class GenerateRouter {
 
   async generate(input: GenerateRequest, signal: AbortSignal): Promise<GenerateAttemptResult> {
     const taskRoute = this.routeFor(input.taskType);
-    const requested = input.provider;
+    // Preserve the legacy automatic route for existing clients. Assistant is
+    // the only client with an application-specific default provider.
+    const requested =
+      input.provider ?? (input.metadata?.application === 'olnoo-assistant' ? 'openai' : 'auto');
     const providers =
       requested === 'auto'
         ? taskRoute
@@ -51,7 +54,7 @@ export class GenerateRouter {
       const provider = this.registry.get(providerName);
       if (!provider) {
         lastError = new AppError(
-          'PROVIDER_UNAVAILABLE',
+          'PROVIDER_NOT_CONFIGURED',
           `Provider "${providerName}" is not configured`,
         );
         if (index < providers.length - 1 && (requested === 'auto' || input.allowFallback)) continue;

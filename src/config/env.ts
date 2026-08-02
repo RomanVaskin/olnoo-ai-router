@@ -53,7 +53,7 @@ const envSchema = z.object({
   CODE_AGENT_MAX_CHANGED_FILES: z.coerce.number().int().positive().default(100),
 
   // Default text models (official provider IDs, centrally overrideable).
-  OPENAI_DEFAULT_MODEL: z.string().min(1).default('gpt-5.2'),
+  OPENAI_DEFAULT_MODEL: z.string().min(1).default('gpt-5.4-mini'),
   ANTHROPIC_DEFAULT_MODEL: z.string().min(1).default('claude-sonnet-5'),
   GEMINI_DEFAULT_MODEL: z.string().min(1).default('gemini-3.5-flash'),
   OPENAI_MODEL: z.string().min(1).optional(),

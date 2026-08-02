@@ -10,11 +10,14 @@
 - [x] Zod-validated environment configuration, fail-fast at startup.
 - [x] OpenAPI docs generated from the same schemas that validate requests.
 
-Explicitly **not** built in Stage 1, by direct instruction: OpenAI, Claude/Anthropic, Qwen, or any provider beyond Gemini; billing; credits; end-user authentication.
+OpenAI and Claude/Anthropic text providers were added through the shared
+provider contract. Qwen, billing, credits, and end-user authentication remain
+out of scope.
 
 ## Stage 2 — additional providers
 
-Add Anthropic, OpenAI, and a local Qwen deployment as `AIProvider` implementations (see `docs/PROVIDERS.md`). No changes expected to `src/api/`, `src/router/`, `src/security/`, or `src/middleware/` — that boundary is the point of Stage 1's design and is the acceptance criterion for Stage 2.
+Evaluate a local Qwen deployment as an `AIProvider` implementation. OpenAI and
+Anthropic are already implemented for text generation.
 
 Likely also in scope: an explicit routing mode (`Auto`/`Fast`/`Balanced`/`Maximum Quality`, per `OLNOO_PLAYBOOK.md` §6) once there's more than one provider to choose between.
 
@@ -30,4 +33,6 @@ Likely also in scope: an explicit routing mode (`Auto`/`Fast`/`Balanced`/`Maximu
 
 ## Non-goals
 
-Per explicit instruction, this repository will not implement user-facing authentication, billing, or credits, and will not add OpenAI/Claude/Qwen provider code until a later stage authorizes it. Do not add these speculatively.
+Per explicit instruction, this repository will not implement user-facing
+authentication, billing, credits, or Qwen provider code until a later stage
+authorizes it. Do not add these speculatively.

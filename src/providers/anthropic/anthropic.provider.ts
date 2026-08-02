@@ -39,10 +39,14 @@ export class AnthropicProvider implements AIProvider {
 
   async chat(input: ProviderChatInput, options: ProviderChatOptions): Promise<ProviderChatOutput> {
     const system = input.messages
-      .filter((m) => m.role === 'system')
+      .filter((m) => m.role === 'system' || m.role === 'developer')
       .map((m) => m.content)
       .join('\n\n');
-    const messages = input.messages.filter((m) => m.role !== 'system');
+    const messages: Anthropic.MessageParam[] = input.messages.flatMap((message) =>
+      message.role === 'user' || message.role === 'assistant'
+        ? [{ role: message.role, content: message.content }]
+        : [],
+    );
     try {
       const response = await withTimeout(
         (timeoutSignal) =>
@@ -68,7 +72,7 @@ export class AnthropicProvider implements AIProvider {
         .map((part) => part.text)
         .join('');
       if (!content)
-        throw new AppError('PROVIDER_INVALID_RESPONSE', 'Anthropic returned no content');
+        throw new AppError('INVALID_PROVIDER_RESPONSE', 'Anthropic returned no content');
       return {
         model: response.model,
         content,
@@ -111,7 +115,7 @@ export class AnthropicProvider implements AIProvider {
         .map((part) => part.text)
         .join('');
       if (!content)
-        throw new AppError('PROVIDER_INVALID_RESPONSE', 'Anthropic returned no structured content');
+        throw new AppError('INVALID_PROVIDER_RESPONSE', 'Anthropic returned no structured content');
       return {
         model: response.model,
         content,
@@ -154,7 +158,7 @@ function mapAnthropicError(error: unknown): AppError {
   }
   if (error instanceof Anthropic.APIError) {
     if (error.status === 401 || error.status === 403) {
-      return new AppError('PROVIDER_AUTHENTICATION_ERROR', 'Anthropic authentication failed', {
+      return new AppError('PROVIDER_AUTH_FAILED', 'Anthropic authentication failed', {
         cause: error,
       });
     }

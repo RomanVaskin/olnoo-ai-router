@@ -105,4 +105,29 @@ describe('GenerateRouter routing', () => {
     ).rejects.toMatchObject({ code: 'PROVIDER_TIMEOUT' });
     expect(secondary).not.toHaveBeenCalled();
   });
+
+  it('returns PROVIDER_NOT_CONFIGURED for a selected provider without a key', async () => {
+    const instance = new GenerateRouter(registry(provider('gemini')), defaults);
+    await expect(
+      instance.generate(input({ provider: 'openai' }), new AbortController().signal),
+    ).rejects.toMatchObject({ code: 'PROVIDER_NOT_CONFIGURED' });
+  });
+
+  it('defaults only olnoo-assistant requests to OpenAI', async () => {
+    const openai = provider('openai');
+    const anthropic = provider('anthropic');
+    const instance = new GenerateRouter(registry(openai, anthropic), defaults);
+    await expect(
+      instance.generate(
+        input({ provider: undefined, metadata: { application: 'olnoo-assistant' } }),
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ provider: 'openai' });
+    await expect(
+      instance.generate(
+        input({ provider: undefined, metadata: { application: 'studio-like-client' } }),
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ provider: 'anthropic' });
+  });
 });

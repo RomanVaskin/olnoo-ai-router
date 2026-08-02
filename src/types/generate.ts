@@ -7,14 +7,14 @@ export const taskTypeSchema = z.enum(['code', 'reasoning', 'fast', 'general']);
 export type TaskType = z.infer<typeof taskTypeSchema>;
 
 const generateMessageSchema = z.object({
-  role: z.enum(['system', 'user', 'assistant']),
+  role: z.enum(['system', 'developer', 'user', 'assistant']),
   content: z.string().min(1).max(32_000),
 });
 
 export const generateRequestSchema = z.object({
   taskType: taskTypeSchema.default('general'),
   messages: z.array(generateMessageSchema).min(1).max(64),
-  provider: providerNameSchema.default('auto'),
+  provider: providerNameSchema.optional(),
   model: z.string().min(1).max(128).nullable().default(null),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().int().positive().max(32_000).optional(),
@@ -33,6 +33,7 @@ export type GenerateRequest = z.infer<typeof generateRequestSchema>;
 
 export const generateResponseSchema = z.object({
   id: z.string(),
+  requestId: z.string(),
   provider: z.enum(['anthropic', 'openai', 'gemini']),
   model: z.string(),
   content: z.string(),
@@ -43,5 +44,6 @@ export const generateResponseSchema = z.object({
   }),
   latencyMs: z.number().int().nonnegative(),
   fallbackUsed: z.boolean(),
+  providerRequestId: z.string().optional(),
 });
 export type GenerateResponse = z.infer<typeof generateResponseSchema>;

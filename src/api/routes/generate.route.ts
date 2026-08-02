@@ -62,6 +62,7 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
         );
         const response: GenerateResponse = {
           id: requestId,
+          requestId,
           provider: result.provider,
           model: result.output.model,
           content: result.output.content,
@@ -72,6 +73,9 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
           },
           latencyMs,
           fallbackUsed: result.fallbackUsed,
+          ...(result.output.providerRequestId
+            ? { providerRequestId: result.output.providerRequestId }
+            : {}),
         };
         return response;
       } catch (error) {

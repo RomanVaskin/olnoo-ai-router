@@ -37,12 +37,25 @@ Copy [`../.env.example`](../.env.example) to `.env` to get started.
 and `GEMINI_MODEL` override their corresponding `*_DEFAULT_MODEL` values when
 set.
 
+OpenAI uses the official Responses API with `OPENAI_API_KEY`; Anthropic uses
+the official Messages API with `ANTHROPIC_API_KEY`. Empty keys leave that
+provider unregistered without preventing Gemini or the Router from starting.
+
 ## Gemini provider
 
 | Variable         | Default            | Notes                                                                                                                 |
 | ---------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | `GEMINI_API_KEY` | _(required)_       | From [Google AI Studio](https://aistudio.google.com/apikey). Server-side only — never sent to or readable by clients. |
 | `GEMINI_MODELS`  | see `.env.example` | Comma-separated allow-list. Production must include the Architect image and review models.                            |
+
+## Text providers
+
+| Variable            | Default           | Notes                                      |
+| ------------------- | ----------------- | ------------------------------------------ |
+| `OPENAI_API_KEY`    | empty             | Server-side only.                          |
+| `OPENAI_MODEL`      | `gpt-5.4-mini`    | Default OpenAI model for text generation.  |
+| `ANTHROPIC_API_KEY` | empty             | Server-side only.                          |
+| `ANTHROPIC_MODEL`   | `claude-sonnet-5` | Default Anthropic model for text requests. |
 
 ## Adding configuration for a new provider
 

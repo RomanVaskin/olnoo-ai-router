@@ -22,6 +22,7 @@ import { registerMetricsRoute } from './api/routes/metrics.route.js';
 import { registerProvidersRoute } from './api/routes/providers.route.js';
 import { registerGenerationRoutes } from './api/routes/generation.route.js';
 import { registerGenerateRoute } from './api/routes/generate.route.js';
+import { registerImageGenerateRoute } from './api/routes/image-generate.route.js';
 import { registerCodeAgentRoutes } from './api/routes/code-agent.route.js';
 import { CodeAgentRuntime } from './code-agent/runtime.js';
 import { rateLimitPlugin } from './security/rate-limit.js';
@@ -110,6 +111,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   registerChatRoute(app, deps);
   registerGenerationRoutes(app, deps);
   registerGenerateRoute(app, deps);
+  registerImageGenerateRoute(app, deps);
   registerCodeAgentRoutes(app, deps);
 
   return app;

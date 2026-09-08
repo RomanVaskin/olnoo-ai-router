@@ -17,7 +17,19 @@ export interface OpenAIProviderConfig {
   apiKey: string;
   model: string;
   requestTimeoutMs: number;
+  imageModel?: string;
   client?: OpenAI;
+}
+
+export interface OpenAITextToImageInput {
+  prompt: string;
+  size?: '1024x1024' | '1536x1024' | '1024x1536';
+}
+
+export interface OpenAITextToImageOutput {
+  model: string;
+  imageBase64: string;
+  mimeType: string;
 }
 
 export class OpenAIProvider implements AIProvider {
@@ -135,6 +147,42 @@ export class OpenAIProvider implements AIProvider {
     return Promise.reject(
       new AppError('MODEL_NOT_FOUND', 'OpenAI image generation is not enabled'),
     );
+  }
+
+  /**
+   * Text-to-image generation for POST /v1/images/generate. Kept separate from
+   * `generateImage` (the multimodal edit path used by /api/images/generate,
+   * which requires source images) so that endpoint's behavior is untouched.
+   */
+  async generateImageFromPrompt(
+    input: OpenAITextToImageInput,
+    options: ProviderChatOptions,
+  ): Promise<OpenAITextToImageOutput> {
+    const model = this.config.imageModel ?? 'gpt-image-1-mini';
+    try {
+      const response = await withTimeout(
+        (timeoutSignal) =>
+          this.client.images.generate(
+            {
+              model,
+              prompt: input.prompt,
+              ...(input.size ? { size: input.size } : {}),
+              n: 1,
+              output_format: 'png',
+            },
+            { signal: AbortSignal.any([timeoutSignal, options.signal]) },
+          ),
+        this.config.requestTimeoutMs,
+        this.name,
+      );
+      const image = response.data?.[0];
+      if (!image?.b64_json) {
+        throw new AppError('INVALID_PROVIDER_RESPONSE', 'OpenAI returned no image data');
+      }
+      return { model, imageBase64: image.b64_json, mimeType: 'image/png' };
+    } catch (error) {
+      throw mapOpenAIError(error);
+    }
   }
 }
 

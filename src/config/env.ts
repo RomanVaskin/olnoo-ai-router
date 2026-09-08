@@ -60,6 +60,9 @@ const envSchema = z.object({
   ANTHROPIC_MODEL: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
 
+  // OpenAI text-to-image model (POST /v1/images/generate).
+  OPENAI_IMAGE_MODEL: z.string().min(1).default('gpt-image-1-mini'),
+
   OPENAI_API_KEY: z.string().default(''),
   ANTHROPIC_API_KEY: z.string().default(''),
 

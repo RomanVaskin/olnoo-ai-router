@@ -27,6 +27,7 @@ export function createProviderRegistry(env: Env): ProviderRegistry {
         apiKey: env.OPENAI_API_KEY,
         model: env.OPENAI_DEFAULT_MODEL,
         requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
+        imageModel: env.OPENAI_IMAGE_MODEL,
       }),
     );
   }

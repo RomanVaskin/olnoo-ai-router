@@ -1,0 +1,50 @@
+name: Deploy to Production (KZ)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production-kz
+  cancel-in-progress: false
+
+env:
+  KZ_HOST: 213.155.29.140
+  KZ_PROJECT_PATH: /opt/olnoo/projects/olnoo-ai-router
+  KZ_SERVICE: olnoo-ai-router.service
+  KZ_HEALTH_URL: http://127.0.0.1:3010/health
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.KZ_SSH_KEY }}" > ~/.ssh/kz_deploy_key
+          chmod 600 ~/.ssh/kz_deploy_key
+          ssh-keyscan -H "${KZ_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Deploy olnoo-ai-router
+        run: |
+          ssh -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              -o BatchMode=yes \
+              -i ~/.ssh/kz_deploy_key \
+              "root@${KZ_HOST}" \
+              "KZ_PROJECT_PATH='${KZ_PROJECT_PATH}' KZ_SERVICE='${KZ_SERVICE}' KZ_HEALTH_URL='${KZ_HEALTH_URL}' bash -s" <<'EOF'
+          set -euo pipefail
+          cd "${KZ_PROJECT_PATH}"
+          git fetch origin main
+          git reset --hard origin/main
+          pnpm install --frozen-lockfile
+          pnpm build
+          systemctl restart "${KZ_SERVICE}"
+          systemctl is-active --quiet "${KZ_SERVICE}"
+          curl --fail "${KZ_HEALTH_URL}"
+          EOF

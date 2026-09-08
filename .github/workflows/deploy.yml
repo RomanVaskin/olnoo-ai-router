@@ -46,5 +46,13 @@ jobs:
           pnpm build
           systemctl restart "${KZ_SERVICE}"
           systemctl is-active --quiet "${KZ_SERVICE}"
-          curl --fail "${KZ_HEALTH_URL}"
+          for i in {1..15}; do
+            if curl --fail --silent "${KZ_HEALTH_URL}" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          journalctl -u "${KZ_SERVICE}" -n 50 --no-pager
+          exit 1
           EOF

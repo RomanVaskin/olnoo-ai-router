@@ -2,6 +2,7 @@ import type { Env } from '../config/env.js';
 import { GeminiProvider } from './gemini/gemini.provider.js';
 import { AnthropicProvider } from './anthropic/anthropic.provider.js';
 import { OpenAIProvider } from './openai/openai.provider.js';
+import { DeepSeekProvider } from './deepseek/deepseek.provider.js';
 import { ProviderRegistry } from './provider.registry.js';
 
 /**
@@ -36,6 +37,17 @@ export function createProviderRegistry(env: Env): ProviderRegistry {
       new AnthropicProvider({
         apiKey: env.ANTHROPIC_API_KEY,
         model: env.ANTHROPIC_DEFAULT_MODEL,
+        requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
+      }),
+    );
+  }
+
+  if (env.DEEPSEEK_API_KEY) {
+    registry.register(
+      new DeepSeekProvider({
+        apiKey: env.DEEPSEEK_API_KEY,
+        model: env.DEEPSEEK_DEFAULT_MODEL,
+        baseURL: env.DEEPSEEK_BASE_URL,
         requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
       }),
     );

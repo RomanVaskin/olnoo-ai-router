@@ -14,6 +14,7 @@ const healthResponseSchema = z.object({
     anthropic: z.boolean(),
     openai: z.boolean(),
     gemini: z.boolean(),
+    deepseek: z.boolean(),
   }),
 });
 
@@ -36,6 +37,7 @@ export function registerHealthRoute(app: FastifyInstance, deps: AppDependencies)
         anthropic: deps.registry.get('anthropic') !== undefined,
         openai: deps.registry.get('openai') !== undefined,
         gemini: deps.registry.get('gemini') !== undefined,
+        deepseek: deps.registry.get('deepseek') !== undefined,
       },
     }),
   });

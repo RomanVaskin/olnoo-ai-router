@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../src/errors/app-error.js';
 import { ProviderRegistry } from '../../src/providers/provider.registry.js';
-import { GenerateRouter } from '../../src/router/generate-router.js';
+import { failedAttemptsOf, GenerateRouter } from '../../src/router/generate-router.js';
 import type { GenerateRequest } from '../../src/types/generate.js';
 import { FakeProvider, type FakeProviderConfig } from '../fakes/fake-provider.js';
 
@@ -129,5 +129,75 @@ describe('GenerateRouter routing', () => {
         new AbortController().signal,
       ),
     ).resolves.toMatchObject({ provider: 'anthropic' });
+  });
+});
+
+describe('GenerateRouter attempt chain', () => {
+  const anthropicRejected = () =>
+    new AppError('VALIDATION_ERROR', 'Anthropic rejected the request', {
+      cause: {
+        status: 400,
+        error: {
+          type: 'error',
+          error: { type: 'invalid_request_error', message: 'bad temperature' },
+        },
+      },
+    });
+
+  it('records openai → anthropic failures on the thrown error, with the real last provider and upstream reason', async () => {
+    const instance = new GenerateRouter(
+      registry(
+        provider(
+          'openai',
+          vi.fn().mockRejectedValue(new AppError('PROVIDER_RATE_LIMITED', 'limit')),
+        ),
+        provider('anthropic', vi.fn().mockRejectedValue(anthropicRejected())),
+        provider('gemini'),
+      ),
+      defaults,
+    );
+    const error = await instance
+      .generate(
+        input({ taskType: 'reasoning', provider: 'openai', allowFallback: true }),
+        new AbortController().signal,
+      )
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(failedAttemptsOf(error)).toEqual([
+      { provider: 'openai', model: 'openai-model', code: 'PROVIDER_RATE_LIMITED' },
+      {
+        provider: 'anthropic',
+        model: 'anthropic-model',
+        code: 'VALIDATION_ERROR',
+        upstream: { status: 400, type: 'invalid_request_error', message: 'bad temperature' },
+      },
+    ]);
+  });
+
+  it('reports the failed openai attempt next to a successful anthropic fallback', async () => {
+    const instance = new GenerateRouter(
+      registry(
+        provider(
+          'openai',
+          vi.fn().mockRejectedValue(new AppError('PROVIDER_RATE_LIMITED', 'limit')),
+        ),
+        provider('anthropic'),
+        provider('gemini'),
+      ),
+      defaults,
+    );
+    const result = await instance.generate(
+      input({ taskType: 'reasoning', provider: 'openai', allowFallback: true }),
+      new AbortController().signal,
+    );
+    expect(result).toMatchObject({ provider: 'anthropic', fallbackUsed: true });
+    expect(result.failedAttempts).toEqual([
+      { provider: 'openai', model: 'openai-model', code: 'PROVIDER_RATE_LIMITED' },
+    ]);
+  });
+
+  it('has no recorded attempts for an unrelated error', () => {
+    expect(failedAttemptsOf(new Error('x'))).toEqual([]);
+    expect(failedAttemptsOf(undefined)).toEqual([]);
   });
 });

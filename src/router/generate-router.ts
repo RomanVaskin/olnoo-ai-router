@@ -1,6 +1,10 @@
 import { AppError } from '../errors/app-error.js';
 import type { AIProvider, ProviderChatOutput } from '../providers/provider.interface.js';
 import type { ProviderRegistry } from '../providers/provider.registry.js';
+import {
+  summarizeUpstreamError,
+  type UpstreamErrorSummary,
+} from '../observability/upstream-error.js';
 import type { GenerateRequest, TaskType } from '../types/generate.js';
 
 export type TextProviderName = 'anthropic' | 'openai' | 'gemini';
@@ -19,10 +23,42 @@ const FALLBACK_ERROR_CODES = new Set([
   'PROVIDER_ERROR',
 ]);
 
+/** One failed provider attempt, safe to log (no secrets). */
+export interface FailedAttempt {
+  provider: TextProviderName;
+  model: string;
+  code: string;
+  upstream?: UpstreamErrorSummary;
+}
+
 export interface GenerateAttemptResult {
   provider: TextProviderName;
   output: ProviderChatOutput;
   fallbackUsed: boolean;
+  /** Attempts that failed before the winner (empty without fallback). */
+  failedAttempts: FailedAttempt[];
+}
+
+const attemptsByError = new WeakMap<object, FailedAttempt[]>();
+
+/** The failed attempts recorded for an error thrown by `GenerateRouter.generate`. */
+export function failedAttemptsOf(error: unknown): FailedAttempt[] {
+  return typeof error === 'object' && error !== null ? (attemptsByError.get(error) ?? []) : [];
+}
+
+function failed(error: Error, attempts: FailedAttempt[]): Error {
+  attemptsByError.set(error, attempts);
+  return error;
+}
+
+function describeAttempt(provider: TextProviderName, model: string, error: unknown): FailedAttempt {
+  const upstream = summarizeUpstreamError(error instanceof AppError ? error.cause : error);
+  return {
+    provider,
+    model,
+    code: error instanceof AppError ? error.code : 'UNKNOWN_ERROR',
+    ...(upstream ? { upstream } : {}),
+  };
 }
 
 export class GenerateRouter {
@@ -48,6 +84,7 @@ export class GenerateRouter {
           ? [requested, ...taskRoute.filter((name) => name !== requested)]
           : [requested];
     let lastError: Error | undefined;
+    const attempts: FailedAttempt[] = [];
 
     for (let index = 0; index < providers.length; index += 1) {
       const providerName = providers[index] as TextProviderName;
@@ -57,20 +94,28 @@ export class GenerateRouter {
           'PROVIDER_NOT_CONFIGURED',
           `Provider "${providerName}" is not configured`,
         );
+        attempts.push(describeAttempt(providerName, 'n/a', lastError));
         if (index < providers.length - 1 && (requested === 'auto' || input.allowFallback)) continue;
-        throw lastError;
+        throw failed(lastError, attempts);
       }
 
       const model = index === 0 && input.model ? input.model : this.defaultModels[providerName];
       if (!provider.supportsModel(model)) {
-        throw new AppError(
+        const notFound = new AppError(
           'MODEL_NOT_FOUND',
           `Provider "${providerName}" does not support model "${model}"`,
         );
+        attempts.push(describeAttempt(providerName, model, notFound));
+        throw failed(notFound, attempts);
       }
       try {
         const output = await this.run(provider, model, input, signal);
-        return { provider: providerName, output, fallbackUsed: index > 0 };
+        return {
+          provider: providerName,
+          output,
+          fallbackUsed: index > 0,
+          failedAttempts: attempts,
+        };
       } catch (error) {
         lastError =
           error instanceof Error
@@ -78,11 +123,15 @@ export class GenerateRouter {
             : new AppError('PROVIDER_ERROR', 'Provider request failed');
         const canFallback =
           index < providers.length - 1 && (requested === 'auto' || input.allowFallback);
-        if (!canFallback || !isFallbackError(error)) throw error;
+        attempts.push(describeAttempt(providerName, model, error));
+        if (!canFallback || !isFallbackError(error)) throw failed(lastError, attempts);
       }
     }
 
-    throw lastError ?? new AppError('PROVIDER_UNAVAILABLE', 'No provider is available');
+    throw failed(
+      lastError ?? new AppError('PROVIDER_UNAVAILABLE', 'No provider is available'),
+      attempts,
+    );
   }
 
   private run(

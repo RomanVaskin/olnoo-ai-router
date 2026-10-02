@@ -191,4 +191,19 @@ optional upstream `providerRequestId`. If `provider` is omitted,
 keep the prior automatic route. An explicit provider never falls back unless
 the caller explicitly sets `allowFallback: true`.
 
+Sampling parameters: `temperature` / `topP` are not forwarded to Anthropic models
+that reject them (Sonnet 5+, Opus 4.7+, Fable, Mythos — HTTP 400
+"`temperature` is deprecated for this model"); they are still forwarded to every
+other Anthropic model and to the other providers.
+
+Fallback runs only for `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`,
+`PROVIDER_UNAVAILABLE` and `PROVIDER_ERROR`. A 400 / auth / billing error of a
+provider is returned as is and does not move on to the next provider.
+
+Logs: a failed `/v1/generate` logs `attempts` — every provider tried with its
+error `code` and a safe `upstream` summary (`status`, `type`, capped `message`;
+never headers or keys) — and `provider` is the last provider actually tried, not
+the requested one. A successful fallback logs `failedAttempts`. Non-generate
+provider errors log the same `upstream` summary.
+
 `GET /health` performs no provider request. Its `providers` object only reports whether each adapter has valid configuration loaded.

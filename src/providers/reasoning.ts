@@ -95,6 +95,15 @@ export function geminiReasoning(
 
 // ---- DeepSeek: no control implemented (its thinking switch could not be verified) ----
 
+// ---- Qwen: no control implemented (its thinking switch could not be verified) ----
+
+export function qwenReasoning(
+  _model: string,
+  mode: ReasoningMode | undefined,
+): ReasoningPlan<Record<string, never>> {
+  return { params: {}, applied: mode ? 'unsupported' : 'default' };
+}
+
 export function deepSeekReasoning(
   _model: string,
   mode: ReasoningMode | undefined,

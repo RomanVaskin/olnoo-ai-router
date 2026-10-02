@@ -20,8 +20,19 @@ describe('GET /health', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       status: 'ok',
-      providers: { anthropic: false, openai: false, gemini: false },
+      providers: { anthropic: false, openai: false, gemini: false, qwen: false },
     });
+  });
+
+  it('reports Qwen only when its provider is registered (key configured)', async () => {
+    const registry = new ProviderRegistry();
+    registry.register(
+      new FakeProvider({ name: 'qwen', models: [{ id: 'qwen-plus', label: 'Qwen' }] }),
+    );
+    app = await buildApp({ registry });
+
+    const response = await app.inject({ method: 'GET', url: '/health' });
+    expect(response.json().providers).toMatchObject({ qwen: true, openai: false });
   });
 });
 

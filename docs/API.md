@@ -182,7 +182,7 @@ responses include a `retryable` flag.
 
 # Unified generation
 
-`POST /v1/generate` accepts provider-neutral messages and is authenticated with `Authorization: Bearer <OLNOO_ROUTER_TOKEN>`. Supported providers are `auto`, `anthropic`, `openai`, and `gemini`; supported task types are `code`, `reasoning`, `fast`, and `general`.
+`POST /v1/generate` accepts provider-neutral messages and is authenticated with `Authorization: Bearer <OLNOO_ROUTER_TOKEN>`. Supported providers are `auto`, `anthropic`, `openai`, `gemini`, and `qwen`; supported task types are `code`, `reasoning`, `fast`, and `general`.
 
 The response contains backward-compatible `id`, normalized `requestId`,
 `provider`, `model`, `content`, `usage`, `latencyMs`, `fallbackUsed`, and an
@@ -199,6 +199,13 @@ other Anthropic model and to the other providers.
 Fallback runs only for `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`,
 `PROVIDER_UNAVAILABLE` and `PROVIDER_ERROR`. A 400 / auth / billing error of a
 provider is returned as is and does not move on to the next provider.
+
+`qwen` (Alibaba Cloud Model Studio, OpenAI-compatible endpoint) is selectable
+only explicitly (`provider: "qwen"`); it is not part of any automatic route, so
+`auto` routing and the OpenAI → Anthropic → Gemini order are unchanged. With
+`allowFallback: true` a failed `qwen` request falls back through the task's
+usual chain. It is registered only when `QWEN_API_KEY` is set (`GET /health`
+reports `providers.qwen`).
 
 Reasoning control: `reasoningMode` (`off` | `low` | `medium` | `high`, optional)
 asks for cheaper/slower reasoning in a provider-neutral way; each adapter

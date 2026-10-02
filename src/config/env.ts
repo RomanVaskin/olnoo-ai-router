@@ -57,10 +57,12 @@ const envSchema = z.object({
   ANTHROPIC_DEFAULT_MODEL: z.string().min(1).default('claude-sonnet-5'),
   GEMINI_DEFAULT_MODEL: z.string().min(1).default('gemini-3.5-flash'),
   DEEPSEEK_DEFAULT_MODEL: z.string().min(1).default('deepseek-v4-flash'),
+  QWEN_DEFAULT_MODEL: z.string().min(1).default('qwen-plus'),
   OPENAI_MODEL: z.string().min(1).optional(),
   ANTHROPIC_MODEL: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
   DEEPSEEK_MODEL: z.string().min(1).optional(),
+  QWEN_MODEL: z.string().min(1).optional(),
 
   // OpenAI text-to-image model (POST /v1/images/generate).
   OPENAI_IMAGE_MODEL: z.string().min(1).default('gpt-image-1-mini'),
@@ -69,6 +71,13 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   DEEPSEEK_API_KEY: z.string().default(''),
   DEEPSEEK_BASE_URL: z.string().min(1).default('https://api.deepseek.com'),
+  QWEN_API_KEY: z.string().default(''),
+  // Alibaba Cloud Model Studio, OpenAI-compatible mode. International (Singapore) endpoint;
+  // a key created in the Beijing region needs https://dashscope.aliyuncs.com/compatible-mode/v1.
+  QWEN_BASE_URL: z
+    .string()
+    .min(1)
+    .default('https://dashscope-intl.aliyuncs.com/compatible-mode/v1'),
 
   // Gemini provider
   GEMINI_API_KEY: z.string().default(''),
@@ -94,8 +103,8 @@ function loadEnv(): Env {
     OPENAI_DEFAULT_MODEL: parsed.data.OPENAI_MODEL ?? parsed.data.OPENAI_DEFAULT_MODEL,
     ANTHROPIC_DEFAULT_MODEL: parsed.data.ANTHROPIC_MODEL ?? parsed.data.ANTHROPIC_DEFAULT_MODEL,
     GEMINI_DEFAULT_MODEL: parsed.data.GEMINI_MODEL ?? parsed.data.GEMINI_DEFAULT_MODEL,
-    DEEPSEEK_DEFAULT_MODEL:
-      parsed.data.DEEPSEEK_MODEL ?? parsed.data.DEEPSEEK_DEFAULT_MODEL,
+    DEEPSEEK_DEFAULT_MODEL: parsed.data.DEEPSEEK_MODEL ?? parsed.data.DEEPSEEK_DEFAULT_MODEL,
+    QWEN_DEFAULT_MODEL: parsed.data.QWEN_MODEL ?? parsed.data.QWEN_DEFAULT_MODEL,
     API_KEYS: [...new Set([...parsed.data.API_KEYS, parsed.data.OLNOO_ROUTER_TOKEN])],
   };
 }

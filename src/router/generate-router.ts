@@ -7,7 +7,7 @@ import {
 } from '../observability/upstream-error.js';
 import type { GenerateRequest, TaskType } from '../types/generate.js';
 
-export type TextProviderName = 'anthropic' | 'openai' | 'gemini';
+export type TextProviderName = 'anthropic' | 'openai' | 'gemini' | 'qwen';
 
 const ROUTES: Record<TaskType, TextProviderName[]> = {
   code: ['openai', 'anthropic', 'gemini'],

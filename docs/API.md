@@ -203,8 +203,9 @@ provider is returned as is and does not move on to the next provider.
 `qwen` (Alibaba Cloud Model Studio, OpenAI-compatible endpoint) is selectable
 only explicitly (`provider: "qwen"`); it is not part of any automatic route, so
 `auto` routing and the OpenAI → Anthropic → Gemini order are unchanged. With
-`allowFallback: true` a failed `qwen` request falls back through the task's
-usual chain. It is registered only when `QWEN_API_KEY` is set (`GET /health`
+`allowFallback: true` a failed `qwen` request is returned to the caller as an
+error and is never retried on another provider (so a benchmark result can't come
+from a different, possibly more expensive model). It is registered only when `QWEN_API_KEY` is set (`GET /health`
 reports `providers.qwen`).
 
 Reasoning control: `reasoningMode` (`off` | `low` | `medium` | `high`, optional)

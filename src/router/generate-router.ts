@@ -77,10 +77,12 @@ export class GenerateRouter {
     // the only client with an application-specific default provider.
     const requested =
       input.provider ?? (input.metadata?.application === 'olnoo-assistant' ? 'openai' : 'auto');
+    // Qwen is for controlled, explicitly requested use (benchmarks, bulk jobs): its result must
+    // never silently come from another, possibly more expensive provider, so it never falls back.
     const providers =
       requested === 'auto'
         ? taskRoute
-        : input.allowFallback
+        : input.allowFallback && requested !== 'qwen'
           ? [requested, ...taskRoute.filter((name) => name !== requested)]
           : [requested];
     let lastError: Error | undefined;

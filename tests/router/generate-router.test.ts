@@ -283,20 +283,46 @@ describe('GenerateRouter qwen', () => {
     expect(chat.mock.calls[0]?.[0]).toMatchObject({ model: 'qwen-model' });
   });
 
-  it('with allowFallback a failing qwen request continues through the usual chain', async () => {
+  it('never falls back from qwen, even with allowFallback: the error goes back to the caller', async () => {
+    const anthropicChat = vi.fn();
+    const openaiChat = vi.fn();
     const instance = new GenerateRouter(
       registry(
         provider('qwen', vi.fn().mockRejectedValue(new AppError('PROVIDER_UNAVAILABLE', 'down'))),
+        provider('anthropic', anthropicChat),
+        provider('openai', openaiChat),
+        provider('gemini'),
+      ),
+      defaults,
+    );
+    const error = await instance
+      .generate(
+        input({ taskType: 'reasoning', provider: 'qwen', allowFallback: true }),
+        new AbortController().signal,
+      )
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    expect(failedAttemptsOf(error).map((a) => a.provider)).toEqual(['qwen']);
+    expect(anthropicChat).not.toHaveBeenCalled();
+    expect(openaiChat).not.toHaveBeenCalled();
+  });
+
+  it('other explicit providers keep their fallback chain unchanged', async () => {
+    const instance = new GenerateRouter(
+      registry(
+        provider(
+          'openai',
+          vi.fn().mockRejectedValue(new AppError('PROVIDER_RATE_LIMITED', 'limit')),
+        ),
         provider('anthropic'),
-        provider('openai'),
+        provider('gemini'),
       ),
       defaults,
     );
     const result = await instance.generate(
-      input({ taskType: 'reasoning', provider: 'qwen', allowFallback: true }),
+      input({ taskType: 'reasoning', provider: 'openai', allowFallback: true }),
       new AbortController().signal,
     );
     expect(result).toMatchObject({ provider: 'anthropic', fallbackUsed: true });
-    expect(result.failedAttempts.map((a) => a.provider)).toEqual(['qwen']);
   });
 });

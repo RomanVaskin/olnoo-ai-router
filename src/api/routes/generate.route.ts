@@ -8,14 +8,16 @@ import {
   type GenerateResponse,
 } from '../../types/generate.js';
 import { failedAttemptsOf, GenerateRouter } from '../../router/generate-router.js';
+import { estimateCostUsd } from '../../pricing/pricing.js';
 import type { AppDependencies } from '../dependencies.js';
 
 export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencies): void {
-  const router = new GenerateRouter(deps.registry, {
+  const defaultModels = {
     anthropic: deps.env.ANTHROPIC_DEFAULT_MODEL,
     openai: deps.env.OPENAI_DEFAULT_MODEL,
     gemini: deps.env.GEMINI_DEFAULT_MODEL,
-  });
+  };
+  const router = new GenerateRouter(deps.registry, defaultModels);
 
   app.withTypeProvider<ZodTypeProvider>().route({
     method: 'POST',
@@ -48,15 +50,35 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
         const result = await router.generate(request.body, controller.signal);
         const latencyMs = Number((process.hrtime.bigint() - startedAt) / 1_000_000n);
         const requestId = request.body.metadata?.requestId ?? request.id;
+        const usage = result.output.usage;
+        const estimatedCostUsd = estimateCostUsd(
+          result.provider,
+          [result.output.model, defaultModels[result.provider]],
+          usage,
+        );
         request.log.info(
           {
             requestId,
             application: request.body.metadata?.application ?? 'unknown',
+            task: request.body.metadata?.task ?? request.body.taskType,
             provider: result.provider,
             model: result.output.model,
             latencyMs,
             status: 'success',
             fallbackUsed: result.fallbackUsed,
+            inputTokens: usage.promptTokens,
+            cachedInputTokens: usage.cachedPromptTokens ?? null,
+            outputTokens: usage.completionTokens,
+            reasoningTokens: usage.reasoningTokens ?? null,
+            totalTokens: usage.totalTokens,
+            // null = no confirmed price for this model (tokens above are still exact).
+            estimatedCostUsd,
+            reasoning: request.body.reasoningMode
+              ? {
+                  requested: request.body.reasoningMode,
+                  applied: result.output.reasoningApplied ?? 'unknown',
+                }
+              : undefined,
             ...(result.failedAttempts.length ? { failedAttempts: result.failedAttempts } : {}),
           },
           'generate request completed',
@@ -71,6 +93,12 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
             inputTokens: result.output.usage.promptTokens,
             outputTokens: result.output.usage.completionTokens,
             totalTokens: result.output.usage.totalTokens,
+            ...(result.output.usage.cachedPromptTokens !== undefined
+              ? { cachedInputTokens: result.output.usage.cachedPromptTokens }
+              : {}),
+            ...(result.output.usage.reasoningTokens !== undefined
+              ? { reasoningTokens: result.output.usage.reasoningTokens }
+              : {}),
           },
           latencyMs,
           fallbackUsed: result.fallbackUsed,

@@ -135,3 +135,60 @@ describe('POST /v1/generate', () => {
     expect(response.json().error.code).toBe('VALIDATION_ERROR');
   });
 });
+
+describe('POST /v1/generate usage breakdown and reasoning', () => {
+  let app: FastifyInstance;
+  afterEach(async () => app.close());
+
+  it('accepts reasoningMode/task and exposes the optional usage breakdown only when reported', async () => {
+    const registry = new ProviderRegistry();
+    registry.register(
+      new FakeProvider({
+        name: 'anthropic',
+        models: [{ id: 'claude-sonnet-5', label: 'Claude' }],
+        chatImpl: async (chatInput) => ({
+          model: chatInput.model,
+          content: 'x',
+          finishReason: 'stop',
+          usage: {
+            promptTokens: 9,
+            completionTokens: 83,
+            totalTokens: 92,
+            reasoningTokens: 79,
+            cachedPromptTokens: 0,
+          },
+          reasoningApplied: 'thinking=disabled',
+        }),
+      }),
+    );
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: {
+        taskType: 'reasoning',
+        provider: 'anthropic',
+        reasoningMode: 'off',
+        messages: [{ role: 'user', content: 'hello' }],
+        metadata: { application: 'test', task: 'seo-relevance-cleanup' },
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().usage).toEqual({
+      inputTokens: 9,
+      outputTokens: 83,
+      totalTokens: 92,
+      cachedInputTokens: 0,
+      reasoningTokens: 79,
+    });
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: { messages: [{ role: 'user', content: 'hello' }], reasoningMode: 'turbo' },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+});

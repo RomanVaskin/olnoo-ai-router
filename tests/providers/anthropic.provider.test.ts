@@ -112,4 +112,46 @@ describe('AnthropicProvider', () => {
     expect(supportsSamplingParams('claude-sonnet-5')).toBe(false);
     expect(supportsSamplingParams('claude-sonnet-4-6')).toBe(true);
   });
+
+  it('sends thinking disabled for reasoningMode off on claude-sonnet-5 (and still no temperature)', async () => {
+    const create = vi.fn().mockResolvedValue(okResponse);
+    const result = await providerWith(create).chat(
+      {
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'Hello' }],
+        temperature: 0.1,
+        reasoningMode: 'off',
+      },
+      { signal: new AbortController().signal },
+    );
+    const payload = create.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload).toMatchObject({ thinking: { type: 'disabled' } });
+    expect(payload).not.toHaveProperty('temperature');
+    expect(result.reasoningApplied).toBe('thinking=disabled');
+  });
+
+  it('sends no reasoning fields without reasoningMode, and reports cache reads in usage', async () => {
+    const create = vi.fn().mockResolvedValue({
+      ...okResponse,
+      usage: {
+        input_tokens: 10,
+        output_tokens: 5,
+        cache_read_input_tokens: 90,
+        cache_creation_input_tokens: 0,
+      },
+    });
+    const result = await providerWith(create).chat(
+      { model: 'claude-sonnet-5', messages: [{ role: 'user', content: 'Hello' }] },
+      { signal: new AbortController().signal },
+    );
+    const payload = create.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('thinking');
+    expect(payload).not.toHaveProperty('output_config');
+    expect(result.usage).toEqual({
+      promptTokens: 100,
+      completionTokens: 5,
+      totalTokens: 105,
+      cachedPromptTokens: 90,
+    });
+  });
 });

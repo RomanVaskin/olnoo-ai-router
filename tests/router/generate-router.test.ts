@@ -201,3 +201,53 @@ describe('GenerateRouter attempt chain', () => {
     expect(failedAttemptsOf(undefined)).toEqual([]);
   });
 });
+
+describe('GenerateRouter reasoningMode', () => {
+  const ok = {
+    model: defaults.openai,
+    content: 'ok',
+    finishReason: 'stop' as const,
+    usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+  };
+
+  it('passes reasoningMode to the provider only when requested', async () => {
+    const chat = vi.fn().mockResolvedValue({ ...ok, reasoningApplied: 'effort=none' });
+    const instance = new GenerateRouter(registry(provider('openai', chat)), defaults);
+    const withMode = await instance.generate(
+      input({ provider: 'openai', reasoningMode: 'off' }),
+      new AbortController().signal,
+    );
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({ reasoningMode: 'off' });
+    expect(withMode.output.reasoningApplied).toBe('effort=none');
+
+    await instance.generate(input({ provider: 'openai' }), new AbortController().signal);
+    expect(chat.mock.calls[1]?.[0]).not.toHaveProperty('reasoningMode');
+  });
+
+  it('retries once without the setting when the provider rejects it, and says so', async () => {
+    const chat = vi
+      .fn()
+      .mockRejectedValueOnce(new AppError('VALIDATION_ERROR', 'OpenAI rejected the request'))
+      .mockResolvedValueOnce(ok);
+    const instance = new GenerateRouter(registry(provider('openai', chat)), defaults);
+    const result = await instance.generate(
+      input({ provider: 'openai', reasoningMode: 'off' }),
+      new AbortController().signal,
+    );
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(chat.mock.calls[1]?.[0]).not.toHaveProperty('reasoningMode');
+    expect(result.output.reasoningApplied).toMatch(/^dropped/);
+  });
+
+  it('does not retry on other errors', async () => {
+    const chat = vi.fn().mockRejectedValue(new AppError('PROVIDER_AUTH_FAILED', 'denied'));
+    const instance = new GenerateRouter(registry(provider('openai', chat)), defaults);
+    await expect(
+      instance.generate(
+        input({ provider: 'openai', reasoningMode: 'off' }),
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: 'PROVIDER_AUTH_FAILED' });
+    expect(chat).toHaveBeenCalledTimes(1);
+  });
+});

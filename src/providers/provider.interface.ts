@@ -1,4 +1,5 @@
 import type { ChatMessage, ChatUsage, FinishReason } from '../types/chat.js';
+import type { ReasoningMode } from '../types/generate.js';
 import type { InlineImage } from '../types/generation.js';
 
 export interface ProviderModelInfo {
@@ -13,6 +14,8 @@ export interface ProviderChatInput {
   temperature?: number;
   maxOutputTokens?: number;
   topP?: number;
+  /** Neutral reasoning setting; each provider translates it (see providers/reasoning.ts). */
+  reasoningMode?: ReasoningMode;
 }
 
 export interface ProviderChatOutput {
@@ -21,6 +24,8 @@ export interface ProviderChatOutput {
   finishReason: FinishReason;
   usage: ChatUsage;
   providerRequestId?: string;
+  /** What the provider actually sent for `reasoningMode` (for logs); absent when none was requested. */
+  reasoningApplied?: string;
 }
 
 export interface ProviderChatOptions {

@@ -10,6 +10,7 @@ const defaults = {
   anthropic: 'anthropic-model',
   gemini: 'gemini-model',
   qwen: 'qwen-model',
+  deepseek: 'deepseek-model',
 };
 
 function input(overrides: Partial<GenerateRequest> = {}): GenerateRequest {
@@ -269,6 +270,7 @@ describe('GenerateRouter qwen', () => {
     const router = new GenerateRouter(new ProviderRegistry(), defaults);
     for (const taskType of ['code', 'reasoning', 'fast', 'general'] as const) {
       expect(router.routeFor(taskType)).not.toContain('qwen');
+      expect(router.routeFor(taskType)).not.toContain('deepseek');
     }
   });
 
@@ -324,5 +326,75 @@ describe('GenerateRouter qwen', () => {
       new AbortController().signal,
     );
     expect(result).toMatchObject({ provider: 'anthropic', fallbackUsed: true });
+  });
+});
+
+describe('GenerateRouter deepseek', () => {
+  const ok = (model: string) => ({
+    model,
+    content: 'ok',
+    finishReason: 'stop' as const,
+    usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+  });
+
+  it('serves provider=deepseek explicitly with its default model and no fallback', async () => {
+    const chat = vi.fn().mockResolvedValue(ok(defaults.deepseek));
+    const instance = new GenerateRouter(registry(provider('deepseek', chat)), defaults);
+    const result = await instance.generate(
+      input({ provider: 'deepseek' }),
+      new AbortController().signal,
+    );
+    expect(result).toMatchObject({ provider: 'deepseek', fallbackUsed: false });
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({ model: 'deepseek-model' });
+  });
+
+  it.each([false, true])(
+    'never falls back from deepseek (allowFallback: %s): the error goes back to the caller',
+    async (allowFallback) => {
+      const anthropicChat = vi.fn();
+      const openaiChat = vi.fn();
+      const geminiChat = vi.fn();
+      const instance = new GenerateRouter(
+        registry(
+          provider(
+            'deepseek',
+            vi.fn().mockRejectedValue(new AppError('PROVIDER_UNAVAILABLE', 'down')),
+          ),
+          provider('anthropic', anthropicChat),
+          provider('openai', openaiChat),
+          provider('gemini', geminiChat),
+        ),
+        defaults,
+      );
+      const error = await instance
+        .generate(
+          input({ taskType: 'reasoning', provider: 'deepseek', allowFallback }),
+          new AbortController().signal,
+        )
+        .catch((e: unknown) => e);
+      expect(error).toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+      expect(failedAttemptsOf(error).map((a) => a.provider)).toEqual(['deepseek']);
+      for (const chat of [anthropicChat, openaiChat, geminiChat]) {
+        expect(chat).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it('keeps the qwen no-fallback behavior', async () => {
+    const anthropicChat = vi.fn();
+    const instance = new GenerateRouter(
+      registry(
+        provider('qwen', vi.fn().mockRejectedValue(new AppError('PROVIDER_UNAVAILABLE', 'down'))),
+        provider('anthropic', anthropicChat),
+      ),
+      defaults,
+    );
+    await expect(
+      instance.generate(
+        input({ provider: 'qwen', allowFallback: true }),
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    expect(anthropicChat).not.toHaveBeenCalled();
   });
 });

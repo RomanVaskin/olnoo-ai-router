@@ -7,7 +7,14 @@ import {
 } from '../observability/upstream-error.js';
 import type { GenerateRequest, TaskType } from '../types/generate.js';
 
-export type TextProviderName = 'anthropic' | 'openai' | 'gemini' | 'qwen';
+export type TextProviderName = 'anthropic' | 'openai' | 'gemini' | 'qwen' | 'deepseek';
+
+/**
+ * Providers used only when requested explicitly (controlled benchmarks, bulk jobs). Their result
+ * must never silently come from another, possibly more expensive provider, so a failing request
+ * is returned to the caller even with allowFallback: true. They are in no automatic route.
+ */
+const NO_FALLBACK_PROVIDERS: ReadonlySet<TextProviderName> = new Set(['qwen', 'deepseek']);
 
 const ROUTES: Record<TaskType, TextProviderName[]> = {
   code: ['openai', 'anthropic', 'gemini'],
@@ -77,12 +84,10 @@ export class GenerateRouter {
     // the only client with an application-specific default provider.
     const requested =
       input.provider ?? (input.metadata?.application === 'olnoo-assistant' ? 'openai' : 'auto');
-    // Qwen is for controlled, explicitly requested use (benchmarks, bulk jobs): its result must
-    // never silently come from another, possibly more expensive provider, so it never falls back.
     const providers =
       requested === 'auto'
         ? taskRoute
-        : input.allowFallback && requested !== 'qwen'
+        : input.allowFallback && !NO_FALLBACK_PROVIDERS.has(requested)
           ? [requested, ...taskRoute.filter((name) => name !== requested)]
           : [requested];
     let lastError: Error | undefined;

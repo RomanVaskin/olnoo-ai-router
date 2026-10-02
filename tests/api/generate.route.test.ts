@@ -20,6 +20,12 @@ async function buildTestApp(): Promise<FastifyInstance> {
   registry.register(
     new FakeProvider({ name: 'qwen', models: [{ id: 'qwen-plus', label: 'Qwen' }] }),
   );
+  registry.register(
+    new FakeProvider({
+      name: 'deepseek',
+      models: [{ id: 'deepseek-v4-flash', label: 'DeepSeek' }],
+    }),
+  );
   const app = await buildApp({ registry });
   await app.ready();
   return app;
@@ -76,6 +82,7 @@ describe('POST /v1/generate', () => {
     ['anthropic', 'claude-sonnet-5'],
     ['gemini', 'gemini-3.5-flash'],
     ['qwen', 'qwen-plus'],
+    ['deepseek', 'deepseek-v4-flash'],
   ] as const)('honors an explicit %s selection without fallback', async (provider, model) => {
     app = await buildTestApp();
     const response = await app.inject({

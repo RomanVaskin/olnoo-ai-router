@@ -17,6 +17,7 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
     openai: deps.env.OPENAI_DEFAULT_MODEL,
     gemini: deps.env.GEMINI_DEFAULT_MODEL,
     qwen: deps.env.QWEN_DEFAULT_MODEL,
+    deepseek: deps.env.DEEPSEEK_DEFAULT_MODEL,
   };
   const router = new GenerateRouter(deps.registry, defaultModels);
 

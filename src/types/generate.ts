@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
-export const providerNameSchema = z.enum(['auto', 'anthropic', 'openai', 'gemini', 'qwen']);
+export const providerNameSchema = z.enum([
+  'auto',
+  'anthropic',
+  'openai',
+  'gemini',
+  'qwen',
+  'deepseek',
+]);
 export type GenerateProviderName = z.infer<typeof providerNameSchema>;
 
 export const reasoningModeSchema = z.enum(['off', 'low', 'medium', 'high']);
@@ -44,7 +51,7 @@ export type GenerateRequest = z.infer<typeof generateRequestSchema>;
 export const generateResponseSchema = z.object({
   id: z.string(),
   requestId: z.string(),
-  provider: z.enum(['anthropic', 'openai', 'gemini', 'qwen']),
+  provider: z.enum(['anthropic', 'openai', 'gemini', 'qwen', 'deepseek']),
   model: z.string(),
   content: z.string(),
   usage: z.object({

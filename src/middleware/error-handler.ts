@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { AppError } from '../errors/app-error.js';
+import { summarizeUpstreamError } from '../observability/upstream-error.js';
 import type { ErrorResponse } from '../types/chat.js';
 
 function toAppError(error: unknown): AppError {
@@ -33,7 +34,10 @@ export function registerErrorHandler(app: FastifyInstance): void {
     if (appError.code === 'INTERNAL_ERROR' || appError.code === 'PROVIDER_ERROR') {
       request.log.error({ err: appError.cause ?? appError, code: appError.code }, appError.message);
     } else {
-      request.log.warn({ code: appError.code }, appError.message);
+      request.log.warn(
+        { code: appError.code, upstream: summarizeUpstreamError(appError.cause) },
+        appError.message,
+      );
     }
 
     const body: ErrorResponse = {

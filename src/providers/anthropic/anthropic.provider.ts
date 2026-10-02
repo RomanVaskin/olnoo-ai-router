@@ -20,6 +20,16 @@ export interface AnthropicProviderConfig {
   client?: Anthropic;
 }
 
+/**
+ * Claude models that reject sampling parameters (`temperature`, `top_p`, `top_k`) with HTTP 400
+ * ("`temperature` is deprecated for this model"): Sonnet 5+, Opus 4.7+, Fable, Mythos.
+ */
+const NO_SAMPLING_MODELS = /^claude-(sonnet-5|opus-5|opus-4-[7-9]|fable|mythos)/;
+
+export function supportsSamplingParams(model: string): boolean {
+  return !NO_SAMPLING_MODELS.test(model);
+}
+
 export class AnthropicProvider implements AIProvider {
   readonly name = 'anthropic';
   private readonly client: Anthropic;
@@ -56,8 +66,12 @@ export class AnthropicProvider implements AIProvider {
               max_tokens: input.maxOutputTokens ?? 2_000,
               messages,
               ...(system ? { system } : {}),
-              ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
-              ...(input.topP !== undefined ? { top_p: input.topP } : {}),
+              ...(supportsSamplingParams(input.model) && input.temperature !== undefined
+                ? { temperature: input.temperature }
+                : {}),
+              ...(supportsSamplingParams(input.model) && input.topP !== undefined
+                ? { top_p: input.topP }
+                : {}),
             },
             { signal: AbortSignal.any([timeoutSignal, options.signal]) },
           ),
@@ -100,7 +114,9 @@ export class AnthropicProvider implements AIProvider {
               output_config: {
                 format: { type: 'json_schema', schema: input.jsonSchema },
               },
-              ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
+              ...(supportsSamplingParams(input.model) && input.temperature !== undefined
+                ? { temperature: input.temperature }
+                : {}),
             },
             { signal: AbortSignal.any([timeoutSignal, options.signal]) },
           ),

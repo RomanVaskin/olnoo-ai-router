@@ -7,7 +7,7 @@ import {
   generateResponseSchema,
   type GenerateResponse,
 } from '../../types/generate.js';
-import { GenerateRouter } from '../../router/generate-router.js';
+import { failedAttemptsOf, GenerateRouter } from '../../router/generate-router.js';
 import type { AppDependencies } from '../dependencies.js';
 
 export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencies): void {
@@ -57,6 +57,7 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
             latencyMs,
             status: 'success',
             fallbackUsed: result.fallbackUsed,
+            ...(result.failedAttempts.length ? { failedAttempts: result.failedAttempts } : {}),
           },
           'generate request completed',
         );
@@ -79,15 +80,18 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
         };
         return response;
       } catch (error) {
+        const attempts = failedAttemptsOf(error);
+        const lastAttempt = attempts[attempts.length - 1];
         request.log.warn(
           {
             requestId: request.body.metadata?.requestId ?? request.id,
             application: request.body.metadata?.application ?? 'unknown',
-            provider: request.body.provider,
-            model: request.body.model ?? 'default',
+            provider: lastAttempt?.provider ?? request.body.provider,
+            model: lastAttempt?.model ?? request.body.model ?? 'default',
+            attempts,
             latencyMs: Number((process.hrtime.bigint() - startedAt) / 1_000_000n),
             status: 'error',
-            fallbackUsed: false,
+            fallbackUsed: attempts.length > 1,
           },
           'generate request failed',
         );

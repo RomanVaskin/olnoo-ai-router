@@ -50,12 +50,15 @@ provider unregistered without preventing Gemini or the Router from starting.
 
 ## Text providers
 
-| Variable            | Default           | Notes                                      |
-| ------------------- | ----------------- | ------------------------------------------ |
-| `OPENAI_API_KEY`    | empty             | Server-side only.                          |
-| `OPENAI_MODEL`      | `gpt-5.4-mini`    | Default OpenAI model for text generation.  |
-| `ANTHROPIC_API_KEY` | empty             | Server-side only.                          |
-| `ANTHROPIC_MODEL`   | `claude-sonnet-5` | Default Anthropic model for text requests. |
+| Variable            | Default                                                  | Notes                                                                                                                              |
+| ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`    | empty                                                    | Server-side only.                                                                                                                  |
+| `OPENAI_MODEL`      | `gpt-5.4-mini`                                           | Default OpenAI model for text generation.                                                                                          |
+| `ANTHROPIC_API_KEY` | empty                                                    | Server-side only.                                                                                                                  |
+| `ANTHROPIC_MODEL`   | `claude-sonnet-5`                                        | Default Anthropic model for text requests.                                                                                         |
+| `QWEN_API_KEY`      | empty                                                    | Server-side only. Alibaba Cloud Model Studio (DashScope) key; the `qwen` provider is registered only when set.                     |
+| `QWEN_MODEL`        | `qwen-plus`                                              | Default Qwen model (`QWEN_DEFAULT_MODEL` is the equivalent centralized default).                                                   |
+| `QWEN_BASE_URL`     | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible endpoint. Keys are region-bound: a Beijing-region key needs `https://dashscope.aliyuncs.com/compatible-mode/v1`. |
 
 ## Adding configuration for a new provider
 

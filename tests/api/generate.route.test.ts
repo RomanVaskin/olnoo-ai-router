@@ -17,6 +17,9 @@ async function buildTestApp(): Promise<FastifyInstance> {
   registry.register(
     new FakeProvider({ name: 'gemini', models: [{ id: 'gemini-3.5-flash', label: 'Gemini' }] }),
   );
+  registry.register(
+    new FakeProvider({ name: 'qwen', models: [{ id: 'qwen-plus', label: 'Qwen' }] }),
+  );
   const app = await buildApp({ registry });
   await app.ready();
   return app;
@@ -72,6 +75,7 @@ describe('POST /v1/generate', () => {
     ['openai', 'gpt-5.4-mini'],
     ['anthropic', 'claude-sonnet-5'],
     ['gemini', 'gemini-3.5-flash'],
+    ['qwen', 'qwen-plus'],
   ] as const)('honors an explicit %s selection without fallback', async (provider, model) => {
     app = await buildTestApp();
     const response = await app.inject({

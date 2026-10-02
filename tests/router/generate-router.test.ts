@@ -5,7 +5,12 @@ import { failedAttemptsOf, GenerateRouter } from '../../src/router/generate-rout
 import type { GenerateRequest } from '../../src/types/generate.js';
 import { FakeProvider, type FakeProviderConfig } from '../fakes/fake-provider.js';
 
-const defaults = { openai: 'openai-model', anthropic: 'anthropic-model', gemini: 'gemini-model' };
+const defaults = {
+  openai: 'openai-model',
+  anthropic: 'anthropic-model',
+  gemini: 'gemini-model',
+  qwen: 'qwen-model',
+};
 
 function input(overrides: Partial<GenerateRequest> = {}): GenerateRequest {
   return {
@@ -249,5 +254,75 @@ describe('GenerateRouter reasoningMode', () => {
       ),
     ).rejects.toMatchObject({ code: 'PROVIDER_AUTH_FAILED' });
     expect(chat).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GenerateRouter qwen', () => {
+  const ok = (model: string) => ({
+    model,
+    content: 'ok',
+    finishReason: 'stop' as const,
+    usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+  });
+
+  it('is never part of an automatic route (existing order unchanged)', () => {
+    const router = new GenerateRouter(new ProviderRegistry(), defaults);
+    for (const taskType of ['code', 'reasoning', 'fast', 'general'] as const) {
+      expect(router.routeFor(taskType)).not.toContain('qwen');
+    }
+  });
+
+  it('serves provider=qwen explicitly with its default model and no fallback by default', async () => {
+    const chat = vi.fn().mockResolvedValue(ok(defaults.qwen));
+    const instance = new GenerateRouter(registry(provider('qwen', chat)), defaults);
+    const result = await instance.generate(
+      input({ provider: 'qwen' }),
+      new AbortController().signal,
+    );
+    expect(result).toMatchObject({ provider: 'qwen', fallbackUsed: false });
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({ model: 'qwen-model' });
+  });
+
+  it('never falls back from qwen, even with allowFallback: the error goes back to the caller', async () => {
+    const anthropicChat = vi.fn();
+    const openaiChat = vi.fn();
+    const instance = new GenerateRouter(
+      registry(
+        provider('qwen', vi.fn().mockRejectedValue(new AppError('PROVIDER_UNAVAILABLE', 'down'))),
+        provider('anthropic', anthropicChat),
+        provider('openai', openaiChat),
+        provider('gemini'),
+      ),
+      defaults,
+    );
+    const error = await instance
+      .generate(
+        input({ taskType: 'reasoning', provider: 'qwen', allowFallback: true }),
+        new AbortController().signal,
+      )
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    expect(failedAttemptsOf(error).map((a) => a.provider)).toEqual(['qwen']);
+    expect(anthropicChat).not.toHaveBeenCalled();
+    expect(openaiChat).not.toHaveBeenCalled();
+  });
+
+  it('other explicit providers keep their fallback chain unchanged', async () => {
+    const instance = new GenerateRouter(
+      registry(
+        provider(
+          'openai',
+          vi.fn().mockRejectedValue(new AppError('PROVIDER_RATE_LIMITED', 'limit')),
+        ),
+        provider('anthropic'),
+        provider('gemini'),
+      ),
+      defaults,
+    );
+    const result = await instance.generate(
+      input({ taskType: 'reasoning', provider: 'openai', allowFallback: true }),
+      new AbortController().signal,
+    );
+    expect(result).toMatchObject({ provider: 'anthropic', fallbackUsed: true });
   });
 });

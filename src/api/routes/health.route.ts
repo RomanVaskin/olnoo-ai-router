@@ -15,6 +15,7 @@ const healthResponseSchema = z.object({
     openai: z.boolean(),
     gemini: z.boolean(),
     deepseek: z.boolean(),
+    qwen: z.boolean(),
   }),
 });
 
@@ -38,6 +39,7 @@ export function registerHealthRoute(app: FastifyInstance, deps: AppDependencies)
         openai: deps.registry.get('openai') !== undefined,
         gemini: deps.registry.get('gemini') !== undefined,
         deepseek: deps.registry.get('deepseek') !== undefined,
+        qwen: deps.registry.get('qwen') !== undefined,
       },
     }),
   });

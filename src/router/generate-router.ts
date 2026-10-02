@@ -134,21 +134,28 @@ export class GenerateRouter {
     );
   }
 
-  private run(
+  private async run(
     provider: AIProvider,
     model: string,
     input: GenerateRequest,
     signal: AbortSignal,
   ): Promise<ProviderChatOutput> {
-    return provider.chat(
-      {
-        model,
-        messages: input.messages,
-        ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
-        ...(input.maxTokens !== undefined ? { maxOutputTokens: input.maxTokens } : {}),
-      },
-      { signal },
-    );
+    const base = {
+      model,
+      messages: input.messages,
+      ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
+      ...(input.maxTokens !== undefined ? { maxOutputTokens: input.maxTokens } : {}),
+    };
+    if (!input.reasoningMode) return provider.chat(base, { signal });
+    try {
+      return await provider.chat({ ...base, reasoningMode: input.reasoningMode }, { signal });
+    } catch (error) {
+      // A provider that rejects the reasoning setting (HTTP 400) must not fail the whole request:
+      // retry once without it, i.e. with the provider's default reasoning, and say so in the log.
+      if (!(error instanceof AppError) || error.code !== 'VALIDATION_ERROR') throw error;
+      const output = await provider.chat(base, { signal });
+      return { ...output, reasoningApplied: 'dropped: provider rejected the reasoning setting' };
+    }
   }
 }
 

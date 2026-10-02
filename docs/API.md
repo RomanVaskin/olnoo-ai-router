@@ -200,6 +200,37 @@ Fallback runs only for `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`,
 `PROVIDER_UNAVAILABLE` and `PROVIDER_ERROR`. A 400 / auth / billing error of a
 provider is returned as is and does not move on to the next provider.
 
+Reasoning control: `reasoningMode` (`off` | `low` | `medium` | `high`, optional)
+asks for cheaper/slower reasoning in a provider-neutral way; each adapter
+translates it (OpenAI `reasoning.effort`; Anthropic `thinking: disabled` or
+`output_config.effort`, depending on what the model accepts; Gemini 3
+`thinkingConfig.thinkingLevel`; DeepSeek: not implemented, nothing is sent).
+Omitted = the provider's default reasoning, as before. If a provider rejects the
+setting (HTTP 400) the Router retries once without it. The mappings follow the
+installed SDK contracts and are not verified against live endpoints; the log
+field `reasoning.applied` shows what was actually sent. `metadata.task` is an
+optional label (`[A-Za-z0-9._:-]{1,64}`) that only appears in logs.
+
+Usage: `usage.inputTokens` / `outputTokens` / `totalTokens` are unchanged;
+optional `cachedInputTokens` (part of `inputTokens` served from cache) and
+`reasoningTokens` (part of `outputTokens` spent on reasoning) appear when the
+provider reports them. `outputTokens` is all billable output **including
+reasoning**: for Gemini it is `candidatesTokenCount + thoughtsTokenCount`
+(earlier versions reported only the visible part, so thinking was invisible and
+`input + output` did not add up to `totalTokens`). Anthropic does not report
+thinking separately, so `reasoningTokens` is absent there. For Gemini,
+`maxTokens` also covers thinking tokens: a tiny limit with thinking on can
+return empty `content`.
+
+Cost log: every successful `/v1/generate` logs `application`, `task`,
+`provider`, `model`, `inputTokens`, `cachedInputTokens`, `outputTokens`,
+`reasoningTokens`, `totalTokens`, `estimatedCostUsd`, `latencyMs`,
+`fallbackUsed` (and `reasoning`). `estimatedCostUsd` comes from the single price
+catalog `src/pricing/pricing.ts` and is `null` for models without a confirmed
+price (the request is never affected). Currently priced: `claude-sonnet-5`,
+`claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-4-5`; OpenAI, Gemini and
+DeepSeek prices are not entered until confirmed from official documentation.
+
 Logs: a failed `/v1/generate` logs `attempts` — every provider tried with its
 error `code` and a safe `upstream` summary (`status`, `type`, capped `message`;
 never headers or keys) — and `provider` is the last provider actually tried, not

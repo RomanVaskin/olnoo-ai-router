@@ -12,6 +12,8 @@ import type {
   ProviderStructuredGenerationOutput,
 } from '../provider.interface.js';
 import type { FinishReason } from '../../types/chat.js';
+import { deepSeekReasoning } from '../reasoning.js';
+import { makeUsage } from '../usage.js';
 import { withTimeout } from '../with-timeout.js';
 
 export interface DeepSeekProviderConfig {
@@ -32,7 +34,11 @@ export class DeepSeekProvider implements AIProvider {
   constructor(private readonly config: DeepSeekProviderConfig) {
     this.client =
       config.client ??
-      new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: config.requestTimeoutMs });
+      new OpenAI({
+        apiKey: config.apiKey,
+        baseURL: config.baseURL,
+        timeout: config.requestTimeoutMs,
+      });
   }
 
   listModels(): ProviderModelInfo[] {
@@ -81,6 +87,9 @@ export class DeepSeekProvider implements AIProvider {
         finishReason: mapFinishReason(choice.finish_reason),
         usage: normalizeUsage(response.usage),
         ...(response._request_id ? { providerRequestId: response._request_id } : {}),
+        ...(input.reasoningMode
+          ? { reasoningApplied: deepSeekReasoning(input.model, input.reasoningMode).applied }
+          : {}),
       };
     } catch (error) {
       throw mapDeepSeekError(error);
@@ -146,13 +155,21 @@ function mapFinishReason(reason: string | null | undefined): FinishReason {
 }
 
 function normalizeUsage(
-  usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined,
+  usage:
+    | {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+        completion_tokens_details?: { reasoning_tokens?: number } | null;
+      }
+    | undefined,
 ) {
-  return {
+  return makeUsage({
     promptTokens: usage?.prompt_tokens ?? 0,
     completionTokens: usage?.completion_tokens ?? 0,
     totalTokens: usage?.total_tokens ?? 0,
-  };
+    reasoningTokens: usage?.completion_tokens_details?.reasoning_tokens,
+  });
 }
 
 function mapDeepSeekError(error: unknown): AppError {

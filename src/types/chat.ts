@@ -23,6 +23,9 @@ export const chatUsageSchema = z.object({
   promptTokens: z.number().int().nonnegative(),
   completionTokens: z.number().int().nonnegative(),
   totalTokens: z.number().int().nonnegative(),
+  // Optional breakdown, present only when the provider reports it (see providers/usage.ts).
+  cachedPromptTokens: z.number().int().nonnegative().optional(),
+  reasoningTokens: z.number().int().nonnegative().optional(),
 });
 export type ChatUsage = z.infer<typeof chatUsageSchema>;
 

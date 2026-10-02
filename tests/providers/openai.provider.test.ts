@@ -55,4 +55,37 @@ describe('OpenAIProvider', () => {
       ),
     ).rejects.toMatchObject({ code: 'PROVIDER_AUTH_FAILED' });
   });
+
+  it('sends reasoning.effort for reasoningMode and reports cached/reasoning tokens', async () => {
+    const create = vi.fn().mockResolvedValue({
+      model: 'gpt-5.4-mini',
+      output_text: 'ok',
+      output: [],
+      status: 'completed',
+      usage: {
+        input_tokens: 100,
+        output_tokens: 50,
+        total_tokens: 150,
+        input_tokens_details: { cached_tokens: 64 },
+        output_tokens_details: { reasoning_tokens: 30 },
+      },
+    });
+    const messages = [{ role: 'user' as const, content: 'Hello' }];
+    const options = { signal: new AbortController().signal };
+    const result = await providerWith(create).chat(
+      { model: 'gpt-5.4-mini', messages, reasoningMode: 'off' },
+      options,
+    );
+    expect(create.mock.calls[0]?.[0]).toMatchObject({ reasoning: { effort: 'none' } });
+    expect(result.reasoningApplied).toBe('effort=none');
+    expect(result.usage).toEqual({
+      promptTokens: 100,
+      completionTokens: 50,
+      totalTokens: 150,
+      cachedPromptTokens: 64,
+      reasoningTokens: 30,
+    });
+    await providerWith(create).chat({ model: 'gpt-4.1', messages, reasoningMode: 'off' }, options);
+    expect(create.mock.calls[1]?.[0]).not.toHaveProperty('reasoning');
+  });
 });

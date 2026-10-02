@@ -11,6 +11,8 @@ import type {
   ProviderStructuredGenerationInput,
   ProviderStructuredGenerationOutput,
 } from '../provider.interface.js';
+import { openAiReasoning } from '../reasoning.js';
+import { makeUsage } from '../usage.js';
 import { withTimeout } from '../with-timeout.js';
 
 export interface OpenAIProviderConfig {
@@ -55,6 +57,7 @@ export class OpenAIProvider implements AIProvider {
       .map((m) => m.content)
       .join('\n\n');
     const messages = input.messages.filter((m) => m.role !== 'system');
+    const reasoning = openAiReasoning(input.model, input.reasoningMode);
     try {
       const response = await withTimeout(
         (timeoutSignal) =>
@@ -68,6 +71,7 @@ export class OpenAIProvider implements AIProvider {
                 : {}),
               ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
               ...(input.topP !== undefined ? { top_p: input.topP } : {}),
+              ...reasoning.params,
             },
             { signal: AbortSignal.any([timeoutSignal, options.signal]) },
           ),
@@ -88,6 +92,7 @@ export class OpenAIProvider implements AIProvider {
         finishReason: response.status === 'incomplete' ? 'length' : 'stop',
         usage: normalizeUsage(response.usage),
         ...(response._request_id ? { providerRequestId: response._request_id } : {}),
+        ...(input.reasoningMode ? { reasoningApplied: reasoning.applied } : {}),
       };
     } catch (error) {
       throw mapOpenAIError(error);
@@ -187,13 +192,23 @@ export class OpenAIProvider implements AIProvider {
 }
 
 function normalizeUsage(
-  usage: { input_tokens: number; output_tokens: number; total_tokens: number } | undefined,
+  usage:
+    | {
+        input_tokens: number;
+        output_tokens: number;
+        total_tokens: number;
+        input_tokens_details?: { cached_tokens?: number } | null;
+        output_tokens_details?: { reasoning_tokens?: number } | null;
+      }
+    | undefined,
 ) {
-  return {
+  return makeUsage({
     promptTokens: usage?.input_tokens ?? 0,
     completionTokens: usage?.output_tokens ?? 0,
     totalTokens: usage?.total_tokens ?? 0,
-  };
+    cachedPromptTokens: usage?.input_tokens_details?.cached_tokens,
+    reasoningTokens: usage?.output_tokens_details?.reasoning_tokens,
+  });
 }
 
 function mapOpenAIError(error: unknown): AppError {

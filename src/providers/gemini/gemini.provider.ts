@@ -1,4 +1,4 @@
-import { FinishReason, GoogleGenAI, Modality } from '@google/genai';
+import { FinishReason, GoogleGenAI, Modality, ThinkingLevel } from '@google/genai';
 import { AppError } from '../../errors/app-error.js';
 import type {
   AIProvider,
@@ -11,6 +11,8 @@ import type {
   ProviderStructuredGenerationInput,
   ProviderStructuredGenerationOutput,
 } from '../provider.interface.js';
+import { geminiReasoning } from '../reasoning.js';
+import { makeUsage } from '../usage.js';
 import { withTimeout } from '../with-timeout.js';
 import { toFinishReason, toGeminiContents } from './gemini.mapper.js';
 import { describeGeminiModel } from './gemini.models.js';
@@ -44,6 +46,7 @@ export class GeminiProvider implements AIProvider {
 
   async chat(input: ProviderChatInput, options: ProviderChatOptions): Promise<ProviderChatOutput> {
     const { contents, systemInstruction } = toGeminiContents(input.messages);
+    const reasoning = geminiReasoning(input.model, input.reasoningMode);
 
     try {
       const response = await withTimeout(
@@ -58,6 +61,13 @@ export class GeminiProvider implements AIProvider {
                 ? { maxOutputTokens: input.maxOutputTokens }
                 : {}),
               ...(input.topP !== undefined ? { topP: input.topP } : {}),
+              ...(reasoning.params.thinkingLevel
+                ? {
+                    thinkingConfig: {
+                      thinkingLevel: ThinkingLevel[reasoning.params.thinkingLevel],
+                    },
+                  }
+                : {}),
               abortSignal: anySignal([timeoutSignal, options.signal]),
             },
           }),
@@ -73,11 +83,16 @@ export class GeminiProvider implements AIProvider {
         model: input.model,
         content: text,
         finishReason: toFinishReason(finishReason),
-        usage: {
+        // Thinking tokens are billed as output but reported separately (thoughtsTokenCount) and are
+        // NOT part of candidatesTokenCount, so they are added here instead of being lost.
+        usage: makeUsage({
           promptTokens: usage?.promptTokenCount ?? 0,
-          completionTokens: usage?.candidatesTokenCount ?? 0,
+          completionTokens: (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0),
           totalTokens: usage?.totalTokenCount ?? 0,
-        },
+          cachedPromptTokens: usage?.cachedContentTokenCount,
+          reasoningTokens: usage?.thoughtsTokenCount,
+        }),
+        ...(input.reasoningMode ? { reasoningApplied: reasoning.applied } : {}),
       };
     } catch (error) {
       throw mapGeminiError(error);

@@ -11,6 +11,8 @@ import type {
   ProviderStructuredGenerationInput,
   ProviderStructuredGenerationOutput,
 } from '../provider.interface.js';
+import { anthropicReasoning } from '../reasoning.js';
+import { makeUsage } from '../usage.js';
 import { withTimeout } from '../with-timeout.js';
 
 export interface AnthropicProviderConfig {
@@ -57,6 +59,7 @@ export class AnthropicProvider implements AIProvider {
         ? [{ role: message.role, content: message.content }]
         : [],
     );
+    const reasoning = anthropicReasoning(input.model, input.reasoningMode);
     try {
       const response = await withTimeout(
         (timeoutSignal) =>
@@ -72,6 +75,7 @@ export class AnthropicProvider implements AIProvider {
               ...(supportsSamplingParams(input.model) && input.topP !== undefined
                 ? { top_p: input.topP }
                 : {}),
+              ...reasoning.params,
             },
             { signal: AbortSignal.any([timeoutSignal, options.signal]) },
           ),
@@ -93,6 +97,7 @@ export class AnthropicProvider implements AIProvider {
         finishReason: response.stop_reason === 'max_tokens' ? 'length' : 'stop',
         usage: normalizeUsage(response.usage),
         ...(response._request_id ? { providerRequestId: response._request_id } : {}),
+        ...(input.reasoningMode ? { reasoningApplied: reasoning.applied } : {}),
       };
     } catch (error) {
       throw mapAnthropicError(error);
@@ -154,12 +159,22 @@ export class AnthropicProvider implements AIProvider {
   }
 }
 
-function normalizeUsage(usage: { input_tokens: number; output_tokens: number }) {
-  return {
-    promptTokens: usage.input_tokens,
+/**
+ * Anthropic's `input_tokens` excludes cache reads/writes and `output_tokens` already includes
+ * thinking (no separate breakdown is reported), so reasoningTokens stays unset here.
+ */
+function normalizeUsage(usage: {
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
+}) {
+  const cacheRead = usage.cache_read_input_tokens ?? 0;
+  return makeUsage({
+    promptTokens: usage.input_tokens + cacheRead + (usage.cache_creation_input_tokens ?? 0),
     completionTokens: usage.output_tokens,
-    totalTokens: usage.input_tokens + usage.output_tokens,
-  };
+    cachedPromptTokens: usage.cache_read_input_tokens ?? undefined,
+  });
 }
 
 function mapAnthropicError(error: unknown): AppError {

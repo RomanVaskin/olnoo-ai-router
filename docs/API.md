@@ -204,6 +204,10 @@ provider is returned as is and does not move on to the next provider.
 `DEEPSEEK_DEFAULT_MODEL`, served by the existing DeepSeek adapter, registered
 only when `DEEPSEEK_API_KEY` is set): explicit-only, in no automatic route, and
 a failed request is returned to the caller even with `allowFallback: true`.
+An empty final answer (DeepSeek thinking models return `reasoning_content` separately, and the
+output limit can be reached while still thinking) is reported as `INVALID_PROVIDER_RESPONSE`
+with safe diagnostics only — `finish_reason`, whether `reasoning_content` was present, and
+completion/reasoning token counts; reasoning text is never returned as the answer.
 
 `qwen` (Alibaba Cloud Model Studio, OpenAI-compatible endpoint) is selectable
 only explicitly (`provider: "qwen"`); it is not part of any automatic route, so

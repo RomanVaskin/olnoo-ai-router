@@ -88,4 +88,36 @@ describe('OpenAIProvider', () => {
     await providerWith(create).chat({ model: 'gpt-4.1', messages, reasoningMode: 'off' }, options);
     expect(create.mock.calls[1]?.[0]).not.toHaveProperty('reasoning');
   });
+
+  it('accepts every enabled model plus the default, lists them, and rejects unknown models', () => {
+    const provider = new OpenAIProvider({
+      apiKey: 'test-key',
+      model: 'gpt-5.4-mini',
+      enabledModels: ['gpt-5.4-mini', 'gpt-5.4-nano'],
+      requestTimeoutMs: 1_000,
+      client: { responses: { create: vi.fn() } } as unknown as OpenAI,
+    });
+    expect(provider.supportsModel('gpt-5.4-nano')).toBe(true);
+    expect(provider.supportsModel('gpt-5.4-mini')).toBe(true);
+    expect(provider.supportsModel('gpt-unknown')).toBe(false);
+    expect(provider.listModels().map((m) => m.id)).toEqual(['gpt-5.4-mini', 'gpt-5.4-nano']);
+  });
+
+  it('always allows the default model even if it is missing from the allow-list; without a list only the default', () => {
+    const make = (enabledModels?: string[]) =>
+      new OpenAIProvider({
+        apiKey: 'test-key',
+        model: 'gpt-default',
+        ...(enabledModels ? { enabledModels } : {}),
+        requestTimeoutMs: 1_000,
+        client: { responses: { create: vi.fn() } } as unknown as OpenAI,
+      });
+    expect(make(['gpt-5.4-nano']).supportsModel('gpt-default')).toBe(true);
+    expect(
+      make()
+        .listModels()
+        .map((m) => m.id),
+    ).toEqual(['gpt-default']);
+    expect(make().supportsModel('gpt-5.4-nano')).toBe(false);
+  });
 });

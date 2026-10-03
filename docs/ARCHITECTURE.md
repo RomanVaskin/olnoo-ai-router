@@ -43,6 +43,30 @@ Text-only structured requests omit images or send `images: []`. Optional safe
 metadata identifies `module: "studio"` and `projectId`; prompts, project
 secrets, `.env` contents and API keys are never logged.
 
+## One Router, fixed service/task presets
+
+One central OLNOO AI Router serves all OLNOO services (DriveSet, Insurance, Property, Marketing, Docs, …); there is no
+separate Router per product. First stage: **no automatic model selection** — every `service + task` pair is bound by hand
+to a fixed preset inside the Router:
+
+```text
+service + task  →  preset (src/router/service-presets.ts)  →  provider  →  model  →  model parameters
+```
+
+| Service.task     | Provider | Model              | Config            |
+| ---------------- | -------- | ------------------ | ----------------- |
+| `driveset.image` | `openai` | `gpt-image-1-mini` | `quality: medium` |
+
+- Client apps send only their `service` id and the task input. They never choose a provider, model or model parameters;
+  anything of that kind in a request is ignored.
+- The preset table lives in one place (`src/router/service-presets.ts`, in code — no database, no admin UI). To change a
+  model or add a service/task (e.g. `insurance.ocr`, `property.image`, `marketing.image`, `docs.text`) edit that table; the
+  client applications do not change.
+- Not part of this stage: automatic model choice, fallback between models, scoring, cost optimization, balancing. They may
+  be layered on later (`OLNOO_PLAYBOOK.md` §6 `Auto` mode) on top of the same `service + task` key.
+- Today only `POST /v1/images/generate` resolves presets. Calls without `service` keep the pre-preset behavior
+  (env-configured `OPENAI_IMAGE_MODEL` / `OPENAI_IMAGE_QUALITY`) so existing clients are not broken.
+
 ## Design goals
 
 1. **One contract, many vendors.** Nothing outside `src/providers/<vendor>/` may know how a specific AI vendor's SDK, auth, or wire format works. Every other layer depends only on the `AIProvider` interface.

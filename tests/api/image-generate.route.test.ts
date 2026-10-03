@@ -125,11 +125,110 @@ describe('POST /v1/images/generate', () => {
       });
       expect(response.statusCode).toBe(200);
       expect(generate).toHaveBeenCalledWith(
-        { model: 'gpt-image-test', prompt: 'a cat', size: '1536x1024', quality, n: 1, output_format: 'png' },
+        {
+          model: 'gpt-image-test',
+          prompt: 'a cat',
+          size: '1536x1024',
+          quality,
+          n: 1,
+          output_format: 'png',
+        },
         expect.any(Object),
       );
     },
   );
+
+  describe('service presets (fixed routing)', () => {
+    async function post(
+      generate: ReturnType<typeof vi.fn>,
+      payload: Record<string, unknown>,
+      quality?: 'low' | 'medium' | 'high' | 'auto',
+    ) {
+      app = await buildTestApp(generate, quality);
+      return app.inject({
+        method: 'POST',
+        url: '/v1/images/generate',
+        headers: { authorization: `Bearer ${TOKEN}` },
+        payload,
+      });
+    }
+
+    it('service=driveset selects OpenAI gpt-image-1-mini at medium quality from the Router preset', async () => {
+      const generate = vi.fn().mockResolvedValue({ data: [{ b64_json: 'ZmFrZQ==' }] });
+      // The provider is configured with a different env model/quality: the preset must win.
+      const response = await post(
+        generate,
+        { service: 'driveset', prompt: 'a car', size: '1536x1024' },
+        'high',
+      );
+      expect(response.statusCode).toBe(200);
+      expect(generate).toHaveBeenCalledWith(
+        {
+          model: 'gpt-image-1-mini',
+          prompt: 'a car',
+          size: '1536x1024',
+          quality: 'medium',
+          n: 1,
+          output_format: 'png',
+        },
+        expect.any(Object),
+      );
+      expect(response.json()).toMatchObject({
+        provider: 'openai',
+        model: 'gpt-image-1-mini',
+        imageBase64: 'ZmFrZQ==',
+        mimeType: 'image/png',
+      });
+    });
+
+    it('a client cannot override provider, model or quality', async () => {
+      const generate = vi.fn().mockResolvedValue({ data: [{ b64_json: 'ZmFrZQ==' }] });
+      const response = await post(generate, {
+        service: 'driveset',
+        prompt: 'a car',
+        provider: 'gemini',
+        model: 'gpt-image-evil',
+        quality: 'high',
+      });
+      expect(response.statusCode).toBe(200);
+      const sent = generate.mock.calls[0]?.[0];
+      expect(sent).toMatchObject({ model: 'gpt-image-1-mini', quality: 'medium' });
+      expect(JSON.stringify(sent)).not.toContain('evil');
+      expect(response.json()).toMatchObject({ provider: 'openai', model: 'gpt-image-1-mini' });
+    });
+
+    it('a call without service behaves exactly as before (env-configured model and quality)', async () => {
+      const generate = vi.fn().mockResolvedValue({ data: [{ b64_json: 'ZmFrZQ==' }] });
+      const response = await post(
+        generate,
+        { prompt: 'a cat', model: 'ignored', quality: 'low' },
+        'high',
+      );
+      expect(response.statusCode).toBe(200);
+      expect(generate).toHaveBeenCalledWith(
+        { model: 'gpt-image-test', prompt: 'a cat', quality: 'high', n: 1, output_format: 'png' },
+        expect.any(Object),
+      );
+    });
+
+    it.each(['unknown-service', 'constructor'])(
+      'rejects service "%s" that has no preset',
+      async (service) => {
+        const generate = vi.fn();
+        const response = await post(generate, { service, prompt: 'a car' });
+        expect(response.statusCode).toBe(400);
+        expect(response.json().error.code).toBe('VALIDATION_ERROR');
+        expect(generate).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects a malformed service id', async () => {
+      const generate = vi.fn();
+      const response = await post(generate, { service: 'Drive Set!', prompt: 'a car' });
+      expect(response.statusCode).toBe(400);
+      expect(generate).not.toHaveBeenCalled();
+    });
+  });
 
   it('maps upstream provider errors to the standard error envelope', async () => {
     const error = new OpenAI.AuthenticationError(401, {}, 'denied', new Headers());

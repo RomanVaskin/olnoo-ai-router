@@ -9,6 +9,7 @@ import {
 } from '../../types/image-generate.js';
 import { AppError } from '../../errors/app-error.js';
 import { OpenAIProvider } from '../../providers/openai/openai.provider.js';
+import { resolveServicePreset } from '../../router/service-presets.js';
 import type { AppDependencies } from '../dependencies.js';
 
 export function registerImageGenerateRoute(app: FastifyInstance, deps: AppDependencies): void {
@@ -34,7 +35,16 @@ export function registerImageGenerateRoute(app: FastifyInstance, deps: AppDepend
     },
     handler: async (request) => {
       const startedAt = process.hrtime.bigint();
-      const provider = deps.registry.get('openai');
+      const body = request.body;
+      // With `service` the provider/model/quality come from the fixed preset; the client cannot choose them.
+      const preset = body.service ? resolveServicePreset(body.service, 'image') : undefined;
+      if (body.service && !preset) {
+        throw new AppError(
+          'VALIDATION_ERROR',
+          `No image preset is configured for service "${body.service}"`,
+        );
+      }
+      const provider = deps.registry.get(preset?.provider ?? 'openai');
       if (!(provider instanceof OpenAIProvider)) {
         throw new AppError('PROVIDER_NOT_CONFIGURED', 'OpenAI provider is not configured');
       }
@@ -44,14 +54,23 @@ export function registerImageGenerateRoute(app: FastifyInstance, deps: AppDepend
       request.raw.once('close', abortOnDisconnect);
 
       try {
-        const body = request.body;
         const output = await provider.generateImageFromPrompt(
-          { prompt: body.prompt, ...(body.size ? { size: body.size } : {}) },
+          {
+            prompt: body.prompt,
+            ...(body.size ? { size: body.size } : {}),
+            ...(preset ? { model: preset.model, quality: preset.quality } : {}),
+          },
           { signal: controller.signal },
         );
         const latencyMs = Number((process.hrtime.bigint() - startedAt) / 1_000_000n);
         request.log.info(
-          { provider: provider.name, model: output.model, latencyMs, status: 'success' },
+          {
+            service: body.service,
+            provider: provider.name,
+            model: output.model,
+            latencyMs,
+            status: 'success',
+          },
           'text-to-image request completed',
         );
         const response: ImageGenerateResponse = {
@@ -67,7 +86,7 @@ export function registerImageGenerateRoute(app: FastifyInstance, deps: AppDepend
       } catch (error) {
         const latencyMs = Number((process.hrtime.bigint() - startedAt) / 1_000_000n);
         request.log.warn(
-          { provider: provider.name, latencyMs, status: 'error' },
+          { service: body.service, provider: provider.name, latencyMs, status: 'error' },
           'text-to-image request failed',
         );
         throw error;

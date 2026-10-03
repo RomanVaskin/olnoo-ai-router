@@ -63,6 +63,10 @@ provider unregistered without preventing Gemini or the Router from starting.
 | `QWEN_MODEL`           | `qwen-plus`                                              | Default Qwen model (`QWEN_DEFAULT_MODEL` is the equivalent centralized default).                                                                                                            |
 | `QWEN_BASE_URL`        | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible endpoint. Keys are region-bound: a Beijing-region key needs `https://dashscope.aliyuncs.com/compatible-mode/v1`.                                                          |
 
+`OPENAI_IMAGE_MODEL` and `OPENAI_IMAGE_QUALITY` apply to `POST /v1/images/generate` calls **without** `service`. Calls with
+a `service` use the fixed service/task preset from `src/router/service-presets.ts` (e.g. `driveset.image` →
+`gpt-image-1-mini`, `medium`) regardless of these variables.
+
 ## Adding configuration for a new provider
 
 Add its variables to the schema in `src/config/env.ts` (fail-fast validation is the whole point — don't read `process.env` directly anywhere else), document them in `.env.example`, and pass them into the provider's constructor from `src/providers/bootstrap.ts`.

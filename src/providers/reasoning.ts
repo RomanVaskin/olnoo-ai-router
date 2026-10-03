@@ -93,18 +93,25 @@ export function geminiReasoning(
   return { params: { thinkingLevel }, applied: `thinkingLevel=${thinkingLevel}` };
 }
 
-// ---- DeepSeek: no control implemented (its thinking switch could not be verified) ----
+// ---- DeepSeek (Chat Completions: `thinking: { type: "disabled" }`) ----
+// Only "off" is mapped: its thinking models reason by default and that reasoning counts against the
+// output limit, which can leave an empty final answer. low/medium/high are not mapped (nothing is
+// sent, applied="unsupported"). If DeepSeek rejects the parameter (HTTP 400), GenerateRouter retries
+// once without it.
+
+export function deepSeekReasoning(
+  _model: string,
+  mode: ReasoningMode | undefined,
+): ReasoningPlan<{ thinking?: { type: 'disabled' } }> {
+  if (!mode) return { params: {}, applied: 'default' };
+  if (mode === 'off')
+    return { params: { thinking: { type: 'disabled' } }, applied: 'thinking=disabled' };
+  return { params: {}, applied: 'unsupported' };
+}
 
 // ---- Qwen: no control implemented (its thinking switch could not be verified) ----
 
 export function qwenReasoning(
-  _model: string,
-  mode: ReasoningMode | undefined,
-): ReasoningPlan<Record<string, never>> {
-  return { params: {}, applied: mode ? 'unsupported' : 'default' };
-}
-
-export function deepSeekReasoning(
   _model: string,
   mode: ReasoningMode | undefined,
 ): ReasoningPlan<Record<string, never>> {

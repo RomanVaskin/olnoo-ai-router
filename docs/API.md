@@ -221,7 +221,7 @@ Reasoning control: `reasoningMode` (`off` | `low` | `medium` | `high`, optional)
 asks for cheaper/slower reasoning in a provider-neutral way; each adapter
 translates it (OpenAI `reasoning.effort`; Anthropic `thinking: disabled` or
 `output_config.effort`, depending on what the model accepts; Gemini 3
-`thinkingConfig.thinkingLevel`; DeepSeek: not implemented, nothing is sent).
+`thinkingConfig.thinkingLevel`; DeepSeek: `off` → `thinking: { type: "disabled" }`, other modes are not mapped and nothing is sent).
 Omitted = the provider's default reasoning, as before. If a provider rejects the
 setting (HTTP 400) the Router retries once without it. The mappings follow the
 installed SDK contracts and are not verified against live endpoints; the log

@@ -159,4 +159,38 @@ describe('DeepSeekProvider response shapes', () => {
     expect((error as Error).message).toContain('finish_reason=length');
     expect((error as Error).message).not.toContain(THINKING);
   });
+
+  describe('reasoningMode', () => {
+    const ok = {
+      model: 'deepseek-test',
+      choices: [{ message: { content: 'final answer' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    };
+
+    it('off sends thinking: { type: "disabled" } in the request', async () => {
+      const create = vi.fn().mockResolvedValue(ok);
+      const result = await providerWith(create).chat({ ...input, reasoningMode: 'off' }, options);
+      expect(create.mock.calls[0]?.[0]).toMatchObject({
+        model: 'deepseek-test',
+        thinking: { type: 'disabled' },
+      });
+      expect(result.reasoningApplied).toBe('thinking=disabled');
+    });
+
+    it('without reasoningMode the request is unchanged (provider default thinking)', async () => {
+      const create = vi.fn().mockResolvedValue(ok);
+      const result = await providerWith(create).chat(input, options);
+      const payload = create.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(payload).not.toHaveProperty('thinking');
+      expect(payload).not.toHaveProperty('reasoning_effort');
+      expect(result).not.toHaveProperty('reasoningApplied');
+    });
+
+    it('modes other than off send nothing and are reported as unsupported', async () => {
+      const create = vi.fn().mockResolvedValue(ok);
+      const result = await providerWith(create).chat({ ...input, reasoningMode: 'high' }, options);
+      expect(create.mock.calls[0]?.[0]).not.toHaveProperty('thinking');
+      expect(result.reasoningApplied).toBe('unsupported');
+    });
+  });
 });

@@ -60,6 +60,7 @@ export class DeepSeekProvider implements AIProvider {
         .filter((m) => m.role === 'user' || m.role === 'assistant')
         .map((m) => ({ role: m.role, content: m.content })),
     ];
+    const reasoning = deepSeekReasoning(input.model, input.reasoningMode);
     try {
       const response = await withTimeout(
         (timeoutSignal) =>
@@ -70,6 +71,7 @@ export class DeepSeekProvider implements AIProvider {
               ...(input.maxOutputTokens !== undefined ? { max_tokens: input.maxOutputTokens } : {}),
               ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
               ...(input.topP !== undefined ? { top_p: input.topP } : {}),
+              ...reasoning.params,
             },
             { signal: AbortSignal.any([timeoutSignal, options.signal]) },
           ),
@@ -85,9 +87,7 @@ export class DeepSeekProvider implements AIProvider {
         finishReason: mapFinishReason(choice.finish_reason),
         usage: normalizeUsage(response.usage),
         ...(response._request_id ? { providerRequestId: response._request_id } : {}),
-        ...(input.reasoningMode
-          ? { reasoningApplied: deepSeekReasoning(input.model, input.reasoningMode).applied }
-          : {}),
+        ...(input.reasoningMode ? { reasoningApplied: reasoning.applied } : {}),
       };
     } catch (error) {
       throw mapDeepSeekError(error);

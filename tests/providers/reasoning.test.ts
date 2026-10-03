@@ -71,16 +71,29 @@ describe('reasoning mode translation', () => {
     });
   });
 
-  it('Gemini 3: thinkingLevel; other Gemini models and DeepSeek: unsupported, nothing sent', () => {
+  it('Gemini 3: thinkingLevel; other Gemini models: unsupported, nothing sent', () => {
     expect(geminiReasoning('gemini-3.5-flash', 'off').params).toEqual({ thinkingLevel: 'MINIMAL' });
     expect(geminiReasoning('gemini-3.5-flash', 'low').params).toEqual({ thinkingLevel: 'LOW' });
     expect(geminiReasoning('gemini-2.5-flash', 'off')).toEqual({
       params: {},
       applied: 'unsupported',
     });
+  });
+
+  it('DeepSeek: off disables thinking; other modes are not mapped; no mode keeps the default', () => {
     expect(deepSeekReasoning('deepseek-v4-flash', 'off')).toEqual({
+      params: { thinking: { type: 'disabled' } },
+      applied: 'thinking=disabled',
+    });
+    for (const mode of ['low', 'medium', 'high'] as const) {
+      expect(deepSeekReasoning('deepseek-v4-flash', mode)).toEqual({
+        params: {},
+        applied: 'unsupported',
+      });
+    }
+    expect(deepSeekReasoning('deepseek-v4-flash', undefined)).toEqual({
       params: {},
-      applied: 'unsupported',
+      applied: 'default',
     });
   });
 });

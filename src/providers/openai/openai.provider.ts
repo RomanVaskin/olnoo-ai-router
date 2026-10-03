@@ -17,7 +17,10 @@ import { withTimeout } from '../with-timeout.js';
 
 export interface OpenAIProviderConfig {
   apiKey: string;
+  /** Default model (automatic routing); always allowed. */
   model: string;
+  /** Models that may be requested explicitly; defaults to just `model`. */
+  enabledModels?: string[];
   requestTimeoutMs: number;
   imageModel?: string;
   client?: OpenAI;
@@ -37,18 +40,20 @@ export interface OpenAITextToImageOutput {
 export class OpenAIProvider implements AIProvider {
   readonly name = 'openai';
   private readonly client: OpenAI;
+  private readonly enabledModels: string[];
 
   constructor(private readonly config: OpenAIProviderConfig) {
     this.client =
       config.client ?? new OpenAI({ apiKey: config.apiKey, timeout: config.requestTimeoutMs });
+    this.enabledModels = [...new Set([...(config.enabledModels ?? []), config.model])];
   }
 
   listModels(): ProviderModelInfo[] {
-    return [{ id: this.config.model, label: this.config.model }];
+    return this.enabledModels.map((id) => ({ id, label: id }));
   }
 
   supportsModel(model: string): boolean {
-    return model === this.config.model;
+    return this.enabledModels.includes(model);
   }
 
   async chat(input: ProviderChatInput, options: ProviderChatOptions): Promise<ProviderChatOutput> {

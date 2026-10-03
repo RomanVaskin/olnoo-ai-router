@@ -59,6 +59,9 @@ const envSchema = z.object({
   DEEPSEEK_DEFAULT_MODEL: z.string().min(1).default('deepseek-v4-flash'),
   QWEN_DEFAULT_MODEL: z.string().min(1).default('qwen-plus'),
   OPENAI_MODEL: z.string().min(1).optional(),
+  // Allow-list of OpenAI text models that may be requested explicitly (OPENAI_DEFAULT_MODEL stays the
+  // default of automatic routing and is always allowed too).
+  OPENAI_MODELS: commaSeparatedList.default('gpt-5.4-mini,gpt-5.4-nano'),
   ANTHROPIC_MODEL: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
   DEEPSEEK_MODEL: z.string().min(1).optional(),

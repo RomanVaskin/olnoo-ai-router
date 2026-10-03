@@ -78,9 +78,7 @@ export class DeepSeekProvider implements AIProvider {
       );
       const choice = response.choices[0];
       const content = choice?.message?.content;
-      if (!content) {
-        throw new AppError('INVALID_PROVIDER_RESPONSE', 'DeepSeek returned no content');
-      }
+      if (!content) throw noFinalContentError(response);
       return {
         model: response.model,
         content,
@@ -123,9 +121,7 @@ export class DeepSeekProvider implements AIProvider {
       );
       const choice = response.choices[0];
       const content = choice?.message?.content;
-      if (!content) {
-        throw new AppError('INVALID_PROVIDER_RESPONSE', 'DeepSeek returned no structured content');
-      }
+      if (!content) throw noFinalContentError(response);
       return {
         model: response.model,
         content,
@@ -146,6 +142,35 @@ export class DeepSeekProvider implements AIProvider {
       new AppError('MODEL_NOT_FOUND', 'DeepSeek image generation is not enabled'),
     );
   }
+}
+
+/**
+ * DeepSeek's thinking models return the chain of thought in `message.reasoning_content` and the final
+ * answer in `message.content`. When the answer is empty the cause cannot be told from the status alone
+ * (`finish_reason: "length"` = the output limit was reached, possibly while still thinking), so the error
+ * carries safe diagnostics only: finish_reason, whether reasoning_content was present, token counts.
+ * Reasoning text is never used as the answer and never copied into the error (no prompt, no secrets).
+ */
+function noFinalContentError(response: {
+  choices?: { finish_reason?: string | null; message?: unknown }[];
+  usage?: {
+    completion_tokens?: number;
+    completion_tokens_details?: { reasoning_tokens?: number } | null;
+  };
+}): AppError {
+  const choice = response.choices?.[0];
+  const reasoning = (choice?.message as { reasoning_content?: unknown } | undefined)
+    ?.reasoning_content;
+  const parts = [
+    choice ? `finish_reason=${choice.finish_reason ?? 'none'}` : 'choices=0',
+    `reasoning_content=${typeof reasoning === 'string' && reasoning.length > 0 ? 'present' : 'absent'}`,
+    `completion_tokens=${response.usage?.completion_tokens ?? 'unknown'}`,
+    `reasoning_tokens=${response.usage?.completion_tokens_details?.reasoning_tokens ?? 'unknown'}`,
+  ];
+  return new AppError(
+    'INVALID_PROVIDER_RESPONSE',
+    `DeepSeek returned no final content (${parts.join(', ')})`,
+  );
 }
 
 function mapFinishReason(reason: string | null | undefined): FinishReason {

@@ -69,6 +69,8 @@ const envSchema = z.object({
 
   // OpenAI text-to-image model (POST /v1/images/generate).
   OPENAI_IMAGE_MODEL: z.string().min(1).default('gpt-image-1-mini'),
+  // Explicit quality for OpenAI text-to-image (passed as `quality`; without it OpenAI uses `auto`).
+  OPENAI_IMAGE_QUALITY: z.enum(['low', 'medium', 'high', 'auto']).default('medium'),
 
   OPENAI_API_KEY: z.string().default(''),
   ANTHROPIC_API_KEY: z.string().default(''),

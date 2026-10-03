@@ -151,6 +151,30 @@ Requires `x-api-key`.
 The response contains `imageBase64`, `mimeType`, `warnings`, provider/model
 metadata, latency, timestamp, and request ID.
 
+## `POST /v1/images/generate`
+
+Generate one image from a text prompt (OpenAI text-to-image). Requires `Authorization: Bearer <OLNOO_ROUTER_TOKEN>`.
+
+```json
+{
+  "service": "driveset",
+  "prompt": "…",
+  "size": "1536x1024"
+}
+```
+
+| Field     | Required | Notes                                                                                                                                                                                                        |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `service` | no       | Id of the calling OLNOO service (`^[a-z][a-z0-9_-]{0,63}$`). The Router maps `service` + task `image` to a fixed preset (see Architecture → Service/task presets). Unknown service → `400 VALIDATION_ERROR`. |
+| `prompt`  | yes      | 1–32 000 characters.                                                                                                                                                                                         |
+| `size`    | no       | `1024x1024`, `1536x1024` or `1024x1536`.                                                                                                                                                                     |
+
+Clients **cannot** choose the provider, model or quality: such fields are ignored. With `service: "driveset"` the Router
+uses OpenAI `gpt-image-1-mini` at `quality: medium`. Without `service` (legacy callers) the behavior is unchanged: the model
+and quality come from `OPENAI_IMAGE_MODEL` / `OPENAI_IMAGE_QUALITY` (default `gpt-image-1-mini` / `medium`).
+
+The response contains `requestId`, `provider`, `model`, `imageBase64`, `mimeType`, `latencyMs`, `createdAt`.
+
 ## `POST /api/structured`
 
 Generate schema-constrained JSON from a prompt and optional 1–4 inline images.

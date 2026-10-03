@@ -50,16 +50,22 @@ provider unregistered without preventing Gemini or the Router from starting.
 
 ## Text providers
 
-| Variable            | Default                                                  | Notes                                                                                                                                                                                       |
-| ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OPENAI_API_KEY`    | empty                                                    | Server-side only.                                                                                                                                                                           |
-| `OPENAI_MODEL`      | `gpt-5.4-mini`                                           | Default OpenAI model for text generation.                                                                                                                                                   |
-| `OPENAI_MODELS`     | `gpt-5.4-mini,gpt-5.4-nano`                              | Comma-separated allow-list of OpenAI text models that can be requested explicitly (`model` in `/v1/generate`). `OPENAI_MODEL` stays the default of automatic routing and is always allowed. |
-| `ANTHROPIC_API_KEY` | empty                                                    | Server-side only.                                                                                                                                                                           |
-| `ANTHROPIC_MODEL`   | `claude-sonnet-5`                                        | Default Anthropic model for text requests.                                                                                                                                                  |
-| `QWEN_API_KEY`      | empty                                                    | Server-side only. Alibaba Cloud Model Studio (DashScope) key; the `qwen` provider is registered only when set.                                                                              |
-| `QWEN_MODEL`        | `qwen-plus`                                              | Default Qwen model (`QWEN_DEFAULT_MODEL` is the equivalent centralized default).                                                                                                            |
-| `QWEN_BASE_URL`     | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible endpoint. Keys are region-bound: a Beijing-region key needs `https://dashscope.aliyuncs.com/compatible-mode/v1`.                                                          |
+| Variable               | Default                                                  | Notes                                                                                                                                                                                       |
+| ---------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`       | empty                                                    | Server-side only.                                                                                                                                                                           |
+| `OPENAI_MODEL`         | `gpt-5.4-mini`                                           | Default OpenAI model for text generation.                                                                                                                                                   |
+| `OPENAI_MODELS`        | `gpt-5.4-mini,gpt-5.4-nano`                              | Comma-separated allow-list of OpenAI text models that can be requested explicitly (`model` in `/v1/generate`). `OPENAI_MODEL` stays the default of automatic routing and is always allowed. |
+| `OPENAI_IMAGE_MODEL`   | `gpt-image-1-mini`                                       | Model of `POST /v1/images/generate` (OpenAI text-to-image).                                                                                                                                 |
+| `OPENAI_IMAGE_QUALITY` | `medium`                                                 | `low`, `medium`, `high` or `auto`; sent as `quality` to OpenAI image generation (without it OpenAI would use `auto`). Invalid values fail startup.                                          |
+| `ANTHROPIC_API_KEY`    | empty                                                    | Server-side only.                                                                                                                                                                           |
+| `ANTHROPIC_MODEL`      | `claude-sonnet-5`                                        | Default Anthropic model for text requests.                                                                                                                                                  |
+| `QWEN_API_KEY`         | empty                                                    | Server-side only. Alibaba Cloud Model Studio (DashScope) key; the `qwen` provider is registered only when set.                                                                              |
+| `QWEN_MODEL`           | `qwen-plus`                                              | Default Qwen model (`QWEN_DEFAULT_MODEL` is the equivalent centralized default).                                                                                                            |
+| `QWEN_BASE_URL`        | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible endpoint. Keys are region-bound: a Beijing-region key needs `https://dashscope.aliyuncs.com/compatible-mode/v1`.                                                          |
+
+`OPENAI_IMAGE_MODEL` and `OPENAI_IMAGE_QUALITY` apply to `POST /v1/images/generate` calls **without** `service`. Calls with
+a `service` use the fixed service/task preset from `src/router/service-presets.ts` (e.g. `driveset.image` →
+`gpt-image-1-mini`, `medium`) regardless of these variables.
 
 ## Adding configuration for a new provider
 

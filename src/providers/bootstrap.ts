@@ -31,6 +31,7 @@ export function createProviderRegistry(env: Env): ProviderRegistry {
         enabledModels: [...new Set([...env.OPENAI_MODELS, env.OPENAI_DEFAULT_MODEL])],
         requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
         imageModel: env.OPENAI_IMAGE_MODEL,
+        imageQuality: env.OPENAI_IMAGE_QUALITY,
       }),
     );
   }

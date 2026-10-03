@@ -15,6 +15,8 @@ import { openAiReasoning } from '../reasoning.js';
 import { makeUsage } from '../usage.js';
 import { withTimeout } from '../with-timeout.js';
 
+export type OpenAIImageQuality = 'low' | 'medium' | 'high' | 'auto';
+
 export interface OpenAIProviderConfig {
   apiKey: string;
   /** Default model (automatic routing); always allowed. */
@@ -23,6 +25,8 @@ export interface OpenAIProviderConfig {
   enabledModels?: string[];
   requestTimeoutMs: number;
   imageModel?: string;
+  /** Quality of text-to-image generation (`OPENAI_IMAGE_QUALITY`); defaults to `medium`. */
+  imageQuality?: OpenAIImageQuality;
   client?: OpenAI;
 }
 
@@ -169,6 +173,7 @@ export class OpenAIProvider implements AIProvider {
     options: ProviderChatOptions,
   ): Promise<OpenAITextToImageOutput> {
     const model = this.config.imageModel ?? 'gpt-image-1-mini';
+    const quality = this.config.imageQuality ?? 'medium';
     try {
       const response = await withTimeout(
         (timeoutSignal) =>
@@ -177,6 +182,7 @@ export class OpenAIProvider implements AIProvider {
               model,
               prompt: input.prompt,
               ...(input.size ? { size: input.size } : {}),
+              quality,
               n: 1,
               output_format: 'png',
             },

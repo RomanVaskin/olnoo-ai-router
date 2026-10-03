@@ -7,7 +7,10 @@ import { ProviderRegistry } from '../../src/providers/provider.registry.js';
 
 const TOKEN = process.env.OLNOO_ROUTER_TOKEN as string;
 
-function buildRegistry(generate: ReturnType<typeof vi.fn>): ProviderRegistry {
+function buildRegistry(
+  generate: ReturnType<typeof vi.fn>,
+  imageQuality?: 'low' | 'medium' | 'high' | 'auto',
+): ProviderRegistry {
   const registry = new ProviderRegistry();
   registry.register(
     new OpenAIProvider({
@@ -15,14 +18,18 @@ function buildRegistry(generate: ReturnType<typeof vi.fn>): ProviderRegistry {
       model: 'gpt-test',
       requestTimeoutMs: 1_000,
       imageModel: 'gpt-image-test',
+      ...(imageQuality ? { imageQuality } : {}),
       client: { images: { generate } } as unknown as OpenAI,
     }),
   );
   return registry;
 }
 
-async function buildTestApp(generate: ReturnType<typeof vi.fn>): Promise<FastifyInstance> {
-  const app = await buildApp({ registry: buildRegistry(generate) });
+async function buildTestApp(
+  generate: ReturnType<typeof vi.fn>,
+  imageQuality?: 'low' | 'medium' | 'high' | 'auto',
+): Promise<FastifyInstance> {
+  const app = await buildApp({ registry: buildRegistry(generate, imageQuality) });
   await app.ready();
   return app;
 }
@@ -79,6 +86,7 @@ describe('POST /v1/images/generate', () => {
         model: 'gpt-image-test',
         prompt: 'a cat riding a bike',
         size: '1024x1024',
+        quality: 'medium',
         n: 1,
         output_format: 'png',
       }),
@@ -91,6 +99,37 @@ describe('POST /v1/images/generate', () => {
       mimeType: 'image/png',
     });
   });
+
+  it('uses quality=medium by default when no quality is configured', async () => {
+    const generate = vi.fn().mockResolvedValue({ data: [{ b64_json: 'ZmFrZQ==' }] });
+    app = await buildTestApp(generate);
+    await app.inject({
+      method: 'POST',
+      url: '/v1/images/generate',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: { prompt: 'a cat' },
+    });
+    expect(generate.mock.calls[0]?.[0]?.quality).toBe('medium');
+  });
+
+  it.each(['low', 'medium', 'high', 'auto'] as const)(
+    'passes the configured quality (%s) to OpenAI',
+    async (quality) => {
+      const generate = vi.fn().mockResolvedValue({ data: [{ b64_json: 'ZmFrZQ==' }] });
+      app = await buildTestApp(generate, quality);
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/images/generate',
+        headers: { authorization: `Bearer ${TOKEN}` },
+        payload: { prompt: 'a cat', size: '1536x1024' },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(generate).toHaveBeenCalledWith(
+        { model: 'gpt-image-test', prompt: 'a cat', size: '1536x1024', quality, n: 1, output_format: 'png' },
+        expect.any(Object),
+      );
+    },
+  );
 
   it('maps upstream provider errors to the standard error envelope', async () => {
     const error = new OpenAI.AuthenticationError(401, {}, 'denied', new Headers());

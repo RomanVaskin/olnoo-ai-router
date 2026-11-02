@@ -1,8 +1,12 @@
 import type { FastifyInstance } from 'fastify';
+import Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { AppError } from '../../src/errors/app-error.js';
 import { ProviderRegistry } from '../../src/providers/provider.registry.js';
+import { AnthropicProvider } from '../../src/providers/anthropic/anthropic.provider.js';
+import { DeepSeekProvider } from '../../src/providers/deepseek/deepseek.provider.js';
 import { FakeProvider } from '../fakes/fake-provider.js';
 
 const TOKEN = process.env.OLNOO_ROUTER_TOKEN as string;
@@ -115,5 +119,72 @@ describe('internal Admin catalog', () => {
       checkedAt: expect.any(String),
     });
     expect(response.body).not.toContain('secret upstream detail');
+  });
+
+  it('checks the working deepseek-flash preset with reasoning off, preserving a real final answer', async () => {
+    const create = vi.fn().mockImplementation(async (request: { model: string; thinking?: { type: string } }) => ({
+      model: request.model,
+      choices: [{
+        message: { content: request.model === 'deepseek-flash' && request.thinking?.type === 'disabled' ? 'OK' : '' },
+        finish_reason: 'stop',
+      }],
+      usage: { prompt_tokens: 5, completion_tokens: 1, total_tokens: 6 },
+    }));
+    const registry = new ProviderRegistry();
+    registry.register(new DeepSeekProvider({
+      apiKey: 'test-key', model: 'deepseek-v4-flash', enabledModels: ['deepseek-flash'],
+      baseURL: 'https://example.invalid', requestTimeoutMs: 1_000,
+      client: { chat: { completions: { create } } } as unknown as OpenAI,
+    }));
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({ method: 'POST', url: '/v1/admin/providers/deepseek/check', headers: auth });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ connected: true, available: true, lastError: null });
+    expect(create).toHaveBeenCalledOnce();
+    expect(create.mock.calls[0]?.[0]).toMatchObject({
+      model: 'deepseek-flash', max_tokens: 16, thinking: { type: 'disabled' },
+    });
+  });
+
+  it('checks the configured Anthropic model with enough output budget and reasoning off', async () => {
+    const create = vi.fn().mockImplementation(async (request: { max_tokens: number; thinking?: { type: string } }) => {
+      if (request.max_tokens < 1_024 || request.thinking?.type !== 'disabled')
+        throw new AppError('VALIDATION_ERROR', 'Invalid check request');
+      return {
+        model: 'claude-sonnet-5', content: [{ type: 'text', text: 'OK' }],
+        stop_reason: 'end_turn', usage: { input_tokens: 5, output_tokens: 1 },
+      };
+    });
+    const registry = new ProviderRegistry();
+    registry.register(new AnthropicProvider({
+      apiKey: 'test-key', model: 'claude-sonnet-5', requestTimeoutMs: 1_000,
+      client: { messages: { create } } as unknown as Anthropic,
+    }));
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({ method: 'POST', url: '/v1/admin/providers/anthropic/check', headers: auth });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ connected: true, available: true, lastError: null });
+    expect(create).toHaveBeenCalledOnce();
+    expect(create.mock.calls[0]?.[0]).toMatchObject({
+      model: 'claude-sonnet-5', max_tokens: 1_024, thinking: { type: 'disabled' },
+    });
+  });
+
+  it('keeps a genuine Anthropic rejection unavailable with a safe error code', async () => {
+    const registry = new ProviderRegistry();
+    registry.register(new AnthropicProvider({
+      apiKey: 'test-key', model: 'claude-sonnet-5', requestTimeoutMs: 1_000,
+      client: { messages: { create: vi.fn().mockRejectedValue(
+        new Anthropic.BadRequestError(400, {}, 'private upstream detail', new Headers()),
+      ) } } as unknown as Anthropic,
+    }));
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({ method: 'POST', url: '/v1/admin/providers/anthropic/check', headers: auth });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ connected: true, available: false, lastError: 'VALIDATION_ERROR' });
+    expect(response.body).not.toContain('private upstream detail');
   });
 });

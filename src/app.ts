@@ -23,6 +23,7 @@ import { registerProvidersRoute } from './api/routes/providers.route.js';
 import { registerGenerationRoutes } from './api/routes/generation.route.js';
 import { registerGenerateRoute } from './api/routes/generate.route.js';
 import { registerImageGenerateRoute } from './api/routes/image-generate.route.js';
+import { registerAdminCatalogRoutes } from './api/routes/admin-catalog.route.js';
 import { registerCodeAgentRoutes } from './api/routes/code-agent.route.js';
 import { CodeAgentRuntime } from './code-agent/runtime.js';
 import { rateLimitPlugin } from './security/rate-limit.js';
@@ -112,6 +113,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   registerGenerationRoutes(app, deps);
   registerGenerateRoute(app, deps);
   registerImageGenerateRoute(app, deps);
+  registerAdminCatalogRoutes(app, deps);
   registerCodeAgentRoutes(app, deps);
 
   return app;

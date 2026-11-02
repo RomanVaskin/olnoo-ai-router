@@ -22,6 +22,10 @@ const generateMessageSchema = z.object({
 });
 
 export const generateRequestSchema = z.object({
+  service: z
+    .string()
+    .regex(/^[a-z][a-z0-9_-]{0,63}$/)
+    .optional(),
   taskType: taskTypeSchema.default('general'),
   messages: z.array(generateMessageSchema).min(1).max(64),
   provider: providerNameSchema.optional(),

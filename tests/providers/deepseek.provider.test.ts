@@ -1,6 +1,8 @@
 import type OpenAI from 'openai';
 import { describe, expect, it, vi } from 'vitest';
 import { DeepSeekProvider } from '../../src/providers/deepseek/deepseek.provider.js';
+import { createProviderRegistry } from '../../src/providers/bootstrap.js';
+import type { Env } from '../../src/config/env.js';
 
 const SECRET = 'sk-deepseek-secret';
 const PROMPT = 'PRIVATE PROMPT TEXT about client keywords';
@@ -10,6 +12,7 @@ function providerWith(create: ReturnType<typeof vi.fn>) {
   return new DeepSeekProvider({
     apiKey: SECRET,
     model: 'deepseek-test',
+    enabledModels: ['deepseek-flash'],
     baseURL: 'https://example.invalid',
     requestTimeoutMs: 1_000,
     client: { chat: { completions: { create } } } as unknown as OpenAI,
@@ -58,6 +61,22 @@ const reasoningExhaustedLimit = {
 };
 
 describe('DeepSeekProvider response shapes', () => {
+  it('registers the text preset model without changing the configured default', () => {
+    const registry = createProviderRegistry({
+      DEEPSEEK_API_KEY: 'test-key',
+      DEEPSEEK_DEFAULT_MODEL: 'deepseek-v4-flash',
+      DEEPSEEK_BASE_URL: 'https://example.invalid',
+      PROVIDER_REQUEST_TIMEOUT_MS: 1_000,
+    } as Env);
+    expect(registry.get('deepseek')?.supportsModel('deepseek-v4-flash')).toBe(true);
+    expect(registry.get('deepseek')?.supportsModel('deepseek-flash')).toBe(true);
+  });
+  it('accepts the pinned Content Factory model alongside the configured legacy default', () => {
+    const provider = providerWith(vi.fn());
+    expect(provider.supportsModel('deepseek-test')).toBe(true);
+    expect(provider.supportsModel('deepseek-flash')).toBe(true);
+    expect(provider.supportsModel('other-model')).toBe(false);
+  });
   it('reads choices[0].message.content, finish_reason and usage', async () => {
     const result = await providerWith(vi.fn().mockResolvedValue(normal)).chat(input, options);
     expect(result).toMatchObject({

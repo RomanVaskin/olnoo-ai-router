@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../src/app.js';
+import { AppError } from '../../src/errors/app-error.js';
 import { ProviderRegistry } from '../../src/providers/provider.registry.js';
 import { FakeProvider } from '../fakes/fake-provider.js';
 
@@ -23,7 +24,10 @@ async function buildTestApp(): Promise<FastifyInstance> {
   registry.register(
     new FakeProvider({
       name: 'deepseek',
-      models: [{ id: 'deepseek-v4-flash', label: 'DeepSeek' }],
+      models: [
+        { id: 'deepseek-v4-flash', label: 'DeepSeek' },
+        { id: 'deepseek-flash', label: 'DeepSeek Flash' },
+      ],
     }),
   );
   const app = await buildApp({ registry });
@@ -129,6 +133,128 @@ describe('POST /v1/generate', () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-5' });
+  });
+
+  it('pins Content Factory to DeepSeek Flash and returns actual model and token usage', async () => {
+    const deepseekCall = vi.fn().mockImplementation(async (input) => ({
+      model: input.model,
+      content: 'article',
+      finishReason: 'stop',
+      usage: { promptTokens: 12, completionTokens: 25, totalTokens: 37 },
+      reasoningApplied: 'thinking=disabled',
+    }));
+    const openaiCall = vi.fn();
+    const registry = new ProviderRegistry();
+    registry.register(
+      new FakeProvider({
+        name: 'deepseek',
+        models: [{ id: 'deepseek-flash', label: 'DeepSeek Flash' }],
+        chatImpl: deepseekCall,
+      }),
+    );
+    registry.register(
+      new FakeProvider({
+        name: 'openai',
+        models: [{ id: 'gpt-5.4-mini', label: 'OpenAI' }],
+        chatImpl: openaiCall,
+      }),
+    );
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: {
+        service: 'content-factory',
+        provider: 'openai',
+        model: 'gpt-5.4-mini',
+        reasoningMode: 'high',
+        allowFallback: true,
+        messages: [{ role: 'user', content: 'Write an article' }],
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(deepseekCall).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'deepseek-flash', reasoningMode: 'off' }),
+      expect.any(Object),
+    );
+    expect(openaiCall).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({
+      provider: 'deepseek',
+      model: 'deepseek-flash',
+      fallbackUsed: false,
+      usage: { inputTokens: 12, outputTokens: 25, totalTokens: 37 },
+    });
+  });
+
+  it('does not fall back after a Content Factory provider failure', async () => {
+    const openaiCall = vi.fn();
+    const registry = new ProviderRegistry();
+    registry.register(
+      new FakeProvider({
+        name: 'deepseek',
+        models: [{ id: 'deepseek-flash', label: 'DeepSeek Flash' }],
+        chatImpl: vi.fn().mockRejectedValue(new AppError('PROVIDER_UNAVAILABLE', 'unavailable')),
+      }),
+    );
+    registry.register(
+      new FakeProvider({
+        name: 'openai',
+        models: [{ id: 'gpt-5.4-mini', label: 'OpenAI' }],
+        chatImpl: openaiCall,
+      }),
+    );
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: {
+        service: 'content-factory',
+        allowFallback: true,
+        messages: [{ role: 'user', content: 'hello' }],
+      },
+    });
+    expect(response.statusCode).toBe(503);
+    expect(openaiCall).not.toHaveBeenCalled();
+  });
+
+  it('does not silently retry Content Factory generation with reasoning enabled', async () => {
+    const deepseekCall = vi
+      .fn()
+      .mockRejectedValue(new AppError('VALIDATION_ERROR', 'reasoning rejected'));
+    const registry = new ProviderRegistry();
+    registry.register(
+      new FakeProvider({
+        name: 'deepseek',
+        models: [{ id: 'deepseek-flash', label: 'DeepSeek Flash' }],
+        chatImpl: deepseekCall,
+      }),
+    );
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: { service: 'content-factory', messages: [{ role: 'user', content: 'hello' }] },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(deepseekCall).toHaveBeenCalledOnce();
+  });
+
+  it('rejects an unknown text service instead of using automatic routing', async () => {
+    app = await buildTestApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      payload: { service: 'unknown', messages: [{ role: 'user', content: 'hello' }] },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe('VALIDATION_ERROR');
   });
 
   it('rejects an unsupported provider before making a provider call', async () => {

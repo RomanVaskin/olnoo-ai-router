@@ -1,5 +1,11 @@
 # API Reference
 
+## Internal Admin catalog
+
+`GET /v1/admin/catalog` uses the existing internal `Authorization: Bearer <OLNOO_ROUTER_TOKEN>` guard. It returns the five provider names, registered models, and the Router's actual `service.task` presets. `connected` means only that a provider adapter is registered. `available` remains `null` until an explicit check; it is never inferred from `/health.providers`.
+
+`POST /v1/admin/providers/:name/check` (same guard; `name` is one of `openai`, `anthropic`, `gemini`, `deepseek`, `qwen`) makes one small real chat request using that provider's first configured model. It returns `available`, `checkedAt`, and a safe `lastError` code. A check can incur provider cost. The most recent check is held only in this Router process; after restart the status is unknown again. Neither endpoint returns keys or raw upstream error text. These endpoints do not provide cost history or provider balances; no durable source for those values exists yet.
+
 ## Code Agent jobs
 
 `POST /api/code-agent/jobs` accepts `taskType: "code_edit"`, `projectId`, free

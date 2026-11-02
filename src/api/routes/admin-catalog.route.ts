@@ -92,13 +92,28 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, deps: AppDepend
       const name = request.params.name;
       const provider = deps.registry.get(name);
       if (!provider) return status(name);
-      const model = provider.listModels()[0]?.id;
+      // The Content Factory preset is the known working DeepSeek text path. The configured
+      // default can be a thinking model and exhaust a tiny check before final content exists.
+      const presetModel = SERVICE_PRESETS['content-factory.text']?.model;
+      const model =
+        name === 'deepseek' && presetModel && provider.supportsModel(presetModel)
+          ? presetModel
+          : provider.listModels()[0]?.id;
       if (!model) throw new AppError('MODEL_NOT_FOUND', `No model is configured for ${name}`);
       if (!pending.has(name)) {
         const check = (async () => {
           try {
             await provider.chat(
-              { model, messages: [{ role: 'user', content: 'Reply OK.' }], maxOutputTokens: 16 },
+              {
+                model,
+                messages: [{ role: 'user', content: 'Reply OK.' }],
+                // Anthropic's default thinking needs room even for a short answer; disabling
+                // it where supported keeps this a small, deterministic availability check.
+                maxOutputTokens: name === 'anthropic' ? 1_024 : 16,
+                ...(name === 'deepseek' || name === 'anthropic'
+                  ? { reasoningMode: 'off' as const }
+                  : {}),
+              },
               { signal: AbortSignal.timeout(20_000) },
             );
             checked.set(name, {

@@ -2,10 +2,10 @@
 //
 // First stage: NO automatic model selection, no fallback between models, no scoring. Each (service, task) pair
 // is bound by hand to exactly one preset, in this file only. Client apps send just their service id (plus the
-// task-specific input) and never choose a provider, model or quality themselves — to change a model, edit the
+// task-specific input) and never choose a preset's provider, model or pinned settings — to change a model, edit the
 // preset here; no client changes are needed. New services/tasks are added as new entries.
 
-export type ServiceTask = 'image';
+export type ServiceTask = 'image' | 'text';
 
 export type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
 
@@ -15,9 +15,22 @@ export interface ImagePreset {
   quality: ImageQuality;
 }
 
+export interface TextPreset {
+  provider: 'deepseek';
+  model: string;
+  reasoningMode: 'off';
+  allowFallback: false;
+}
+
 /** `"<service>.<task>"` -> preset. */
-export const SERVICE_PRESETS: Readonly<Record<string, ImagePreset>> = {
+export const SERVICE_PRESETS: Readonly<Record<string, ImagePreset | TextPreset>> = {
   'driveset.image': { provider: 'openai', model: 'gpt-image-1-mini', quality: 'medium' },
+  'content-factory.text': {
+    provider: 'deepseek',
+    model: 'deepseek-flash',
+    reasoningMode: 'off',
+    allowFallback: false,
+  },
 };
 
 export function presetKey(service: string, task: ServiceTask): string {
@@ -25,7 +38,12 @@ export function presetKey(service: string, task: ServiceTask): string {
 }
 
 /** The preset bound to `service` + `task`, or `undefined` when none is configured. */
-export function resolveServicePreset(service: string, task: ServiceTask): ImagePreset | undefined {
+export function resolveServicePreset(service: string, task: 'image'): ImagePreset | undefined;
+export function resolveServicePreset(service: string, task: 'text'): TextPreset | undefined;
+export function resolveServicePreset(
+  service: string,
+  task: ServiceTask,
+): ImagePreset | TextPreset | undefined {
   const key = presetKey(service, task);
   return Object.hasOwn(SERVICE_PRESETS, key) ? SERVICE_PRESETS[key] : undefined;
 }

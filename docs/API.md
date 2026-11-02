@@ -208,6 +208,13 @@ responses include a `retryable` flag.
 
 `POST /v1/generate` accepts provider-neutral messages and is authenticated with `Authorization: Bearer <OLNOO_ROUTER_TOKEN>`. Supported providers are `auto`, `anthropic`, `openai`, `gemini`, `qwen`, and `deepseek`; supported task types are `code`, `reasoning`, `fast`, and `general`.
 
+Optional `service` (`^[a-z][a-z0-9_-]{0,63}$`) selects a fixed text preset. `service: "content-factory"` pins
+`deepseek` / `deepseek-flash`, reasoning `off`, and no provider fallback; client-supplied `provider`, `model`,
+`reasoningMode`, and `allowFallback` cannot override it. Unknown services return `400 VALIDATION_ERROR`.
+Without `service`, the existing routing and request fields retain their behavior. Responses still report the
+provider's actual model and normalized token usage. If DeepSeek rejects the reasoning-off setting, this preset
+fails instead of retrying with reasoning enabled.
+
 The response contains backward-compatible `id`, normalized `requestId`,
 `provider`, `model`, `content`, `usage`, `latencyMs`, `fallbackUsed`, and an
 optional upstream `providerRequestId`. If `provider` is omitted,

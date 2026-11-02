@@ -53,19 +53,21 @@ to a fixed preset inside the Router:
 service + task  →  preset (src/router/service-presets.ts)  →  provider  →  model  →  model parameters
 ```
 
-| Service.task     | Provider | Model              | Config            |
-| ---------------- | -------- | ------------------ | ----------------- |
-| `driveset.image` | `openai` | `gpt-image-1-mini` | `quality: medium` |
+| Service.task           | Provider   | Model              | Config                              |
+| ---------------------- | ---------- | ------------------ | ----------------------------------- |
+| `driveset.image`       | `openai`   | `gpt-image-1-mini` | `quality: medium`                   |
+| `content-factory.text` | `deepseek` | `deepseek-flash`   | `reasoning: off`, `fallback: false` |
 
-- Client apps send only their `service` id and the task input. They never choose a provider, model or model parameters;
-  anything of that kind in a request is ignored.
+- Client apps send their `service` id and task input. They cannot override a preset's provider, model, or pinned
+  settings (`quality` for images; `reasoningMode` and `allowFallback` for Content Factory text). Other text request
+  fields retain their usual behavior.
 - The preset table lives in one place (`src/router/service-presets.ts`, in code — no database, no admin UI). To change a
   model or add a service/task (e.g. `insurance.ocr`, `property.image`, `marketing.image`, `docs.text`) edit that table; the
   client applications do not change.
 - Not part of this stage: automatic model choice, fallback between models, scoring, cost optimization, balancing. They may
   be layered on later (`OLNOO_PLAYBOOK.md` §6 `Auto` mode) on top of the same `service + task` key.
-- Today only `POST /v1/images/generate` resolves presets. Calls without `service` keep the pre-preset behavior
-  (env-configured `OPENAI_IMAGE_MODEL` / `OPENAI_IMAGE_QUALITY`) so existing clients are not broken.
+- `POST /v1/images/generate` and `POST /v1/generate` resolve their respective image/text presets. Calls without
+  `service` keep their existing routing and model defaults, so legacy clients are not changed.
 
 ## Design goals
 

@@ -9,6 +9,8 @@ import {
 } from '../../types/generate.js';
 import { failedAttemptsOf, GenerateRouter } from '../../router/generate-router.js';
 import { estimateCostUsd } from '../../pricing/pricing.js';
+import { resolveServicePreset } from '../../router/service-presets.js';
+import { AppError } from '../../errors/app-error.js';
 import type { AppDependencies } from '../dependencies.js';
 
 export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencies): void {
@@ -49,7 +51,27 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
       request.raw.once('close', abortOnDisconnect);
 
       try {
-        const result = await router.generate(request.body, controller.signal);
+        const preset = request.body.service
+          ? resolveServicePreset(request.body.service, 'text')
+          : undefined;
+        if (request.body.service && !preset) {
+          throw new AppError(
+            'VALIDATION_ERROR',
+            `No text preset is configured for service "${request.body.service}"`,
+          );
+        }
+        const input = preset
+          ? {
+              ...request.body,
+              provider: preset.provider,
+              model: preset.model,
+              reasoningMode: preset.reasoningMode,
+              allowFallback: preset.allowFallback,
+            }
+          : request.body;
+        const result = await router.generate(input, controller.signal, {
+          strictReasoning: !!preset,
+        });
         const latencyMs = Number((process.hrtime.bigint() - startedAt) / 1_000_000n);
         const requestId = request.body.metadata?.requestId ?? request.id;
         const usage = result.output.usage;
@@ -75,9 +97,9 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
             totalTokens: usage.totalTokens,
             // null = no confirmed price for this model (tokens above are still exact).
             estimatedCostUsd,
-            reasoning: request.body.reasoningMode
+            reasoning: input.reasoningMode
               ? {
-                  requested: request.body.reasoningMode,
+                  requested: input.reasoningMode,
                   applied: result.output.reasoningApplied ?? 'unknown',
                 }
               : undefined,

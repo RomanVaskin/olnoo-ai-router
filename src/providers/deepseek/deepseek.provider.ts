@@ -19,6 +19,7 @@ import { withTimeout } from '../with-timeout.js';
 export interface DeepSeekProviderConfig {
   apiKey: string;
   model: string;
+  enabledModels?: string[];
   baseURL: string;
   requestTimeoutMs: number;
   client?: OpenAI;
@@ -30,8 +31,10 @@ export interface DeepSeekProviderConfig {
 export class DeepSeekProvider implements AIProvider {
   readonly name = 'deepseek';
   private readonly client: OpenAI;
+  private readonly enabledModels: string[];
 
   constructor(private readonly config: DeepSeekProviderConfig) {
+    this.enabledModels = [...new Set([config.model, ...(config.enabledModels ?? [])])];
     this.client =
       config.client ??
       new OpenAI({
@@ -42,11 +45,11 @@ export class DeepSeekProvider implements AIProvider {
   }
 
   listModels(): ProviderModelInfo[] {
-    return [{ id: this.config.model, label: this.config.model }];
+    return this.enabledModels.map((id) => ({ id, label: id }));
   }
 
   supportsModel(model: string): boolean {
-    return model === this.config.model;
+    return this.enabledModels.includes(model);
   }
 
   async chat(input: ProviderChatInput, options: ProviderChatOptions): Promise<ProviderChatOutput> {

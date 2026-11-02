@@ -5,6 +5,7 @@ import { OpenAIProvider } from './openai/openai.provider.js';
 import { DeepSeekProvider } from './deepseek/deepseek.provider.js';
 import { QwenProvider } from './qwen/qwen.provider.js';
 import { ProviderRegistry } from './provider.registry.js';
+import { SERVICE_PRESETS } from '../router/service-presets.js';
 
 /**
  * Wires up every provider enabled for this deployment. Adding a new vendor
@@ -50,6 +51,9 @@ export function createProviderRegistry(env: Env): ProviderRegistry {
       new DeepSeekProvider({
         apiKey: env.DEEPSEEK_API_KEY,
         model: env.DEEPSEEK_DEFAULT_MODEL,
+        enabledModels: Object.entries(SERVICE_PRESETS)
+          .filter(([key, preset]) => key.endsWith('.text') && preset.provider === 'deepseek')
+          .map(([, preset]) => preset.model),
         baseURL: env.DEEPSEEK_BASE_URL,
         requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
       }),

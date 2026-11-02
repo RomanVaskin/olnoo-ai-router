@@ -78,7 +78,11 @@ export class GenerateRouter {
     return [...ROUTES[taskType]];
   }
 
-  async generate(input: GenerateRequest, signal: AbortSignal): Promise<GenerateAttemptResult> {
+  async generate(
+    input: GenerateRequest,
+    signal: AbortSignal,
+    options: { strictReasoning?: boolean } = {},
+  ): Promise<GenerateAttemptResult> {
     const taskRoute = this.routeFor(input.taskType);
     // Preserve the legacy automatic route for existing clients. Assistant is
     // the only client with an application-specific default provider.
@@ -116,7 +120,13 @@ export class GenerateRouter {
         throw failed(notFound, attempts);
       }
       try {
-        const output = await this.run(provider, model, input, signal);
+        const output = await this.run(
+          provider,
+          model,
+          input,
+          signal,
+          options.strictReasoning ?? false,
+        );
         return {
           provider: providerName,
           output,
@@ -146,6 +156,7 @@ export class GenerateRouter {
     model: string,
     input: GenerateRequest,
     signal: AbortSignal,
+    strictReasoning: boolean,
   ): Promise<ProviderChatOutput> {
     const base = {
       model,
@@ -157,9 +168,10 @@ export class GenerateRouter {
     try {
       return await provider.chat({ ...base, reasoningMode: input.reasoningMode }, { signal });
     } catch (error) {
-      // A provider that rejects the reasoning setting (HTTP 400) must not fail the whole request:
-      // retry once without it, i.e. with the provider's default reasoning, and say so in the log.
-      if (!(error instanceof AppError) || error.code !== 'VALIDATION_ERROR') throw error;
+      // Legacy requests retry a rejected reasoning setting without it. A fixed service preset
+      // must fail instead, or its requested reasoning mode would silently change.
+      if (strictReasoning || !(error instanceof AppError) || error.code !== 'VALIDATION_ERROR')
+        throw error;
       const output = await provider.chat(base, { signal });
       return { ...output, reasoningApplied: 'dropped: provider rejected the reasoning setting' };
     }

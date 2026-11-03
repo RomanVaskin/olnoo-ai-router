@@ -5,7 +5,7 @@
 // task-specific input) and never choose a preset's provider, model or pinned settings — to change a model, edit the
 // preset here; no client changes are needed. New services/tasks are added as new entries.
 
-export type ServiceTask = 'image' | 'text';
+export type ServiceTask = 'image' | 'text' | 'review';
 
 export type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
 
@@ -16,9 +16,9 @@ export interface ImagePreset {
 }
 
 export interface TextPreset {
-  provider: 'deepseek';
+  provider: 'deepseek' | 'openai';
   model: string;
-  reasoningMode: 'off';
+  reasoningMode: 'off' | 'medium';
   allowFallback: false;
 }
 
@@ -31,6 +31,12 @@ export const SERVICE_PRESETS: Readonly<Record<string, ImagePreset | TextPreset>>
     reasoningMode: 'off',
     allowFallback: false,
   },
+  'content-factory.review': {
+    provider: 'openai',
+    model: 'gpt-5.4-mini-2026-03-17',
+    reasoningMode: 'medium',
+    allowFallback: false,
+  },
 };
 
 export function presetKey(service: string, task: ServiceTask): string {
@@ -39,7 +45,7 @@ export function presetKey(service: string, task: ServiceTask): string {
 
 /** The preset bound to `service` + `task`, or `undefined` when none is configured. */
 export function resolveServicePreset(service: string, task: 'image'): ImagePreset | undefined;
-export function resolveServicePreset(service: string, task: 'text'): TextPreset | undefined;
+export function resolveServicePreset(service: string, task: 'text' | 'review'): TextPreset | undefined;
 export function resolveServicePreset(
   service: string,
   task: ServiceTask,

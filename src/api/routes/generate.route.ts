@@ -51,13 +51,16 @@ export function registerGenerateRoute(app: FastifyInstance, deps: AppDependencie
       request.raw.once('close', abortOnDisconnect);
 
       try {
+        if (request.body.presetTask && !request.body.service) {
+          throw new AppError('VALIDATION_ERROR', 'presetTask requires service');
+        }
         const preset = request.body.service
-          ? resolveServicePreset(request.body.service, 'text')
+          ? resolveServicePreset(request.body.service, request.body.presetTask ?? 'text')
           : undefined;
         if (request.body.service && !preset) {
           throw new AppError(
             'VALIDATION_ERROR',
-            `No text preset is configured for service "${request.body.service}"`,
+            `No ${request.body.presetTask ?? 'text'} preset is configured for service "${request.body.service}"`,
           );
         }
         const input = preset

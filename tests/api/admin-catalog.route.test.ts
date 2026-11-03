@@ -48,6 +48,10 @@ describe('internal Admin catalog', () => {
         model: 'deepseek-flash',
       }),
     );
+    expect(data.presets).toContainEqual(expect.objectContaining({
+      key: 'content-factory.review', provider: 'openai',
+      model: 'gpt-5.4-mini-2026-03-17', reasoningMode: 'medium', allowFallback: false,
+    }));
     expect(chat).not.toHaveBeenCalled();
     expect(response.body).not.toContain(TOKEN);
   });

@@ -1,5 +1,9 @@
 # API Reference
 
+## Content Factory review preset
+
+`POST /v1/generate` accepts optional `presetTask: "review"` together with `service: "content-factory"` to select `content-factory.review`. The Router pins OpenAI `gpt-5.4-mini-2026-03-17`, reasoning `medium`, and no fallback; any client-supplied provider/model/reasoning/fallback values are overridden. Omitting `presetTask` retains the existing `content-factory.text` DeepSeek preset. `presetTask` without `service` is rejected. The dated model is registered alongside the existing OpenAI defaults, without changing automatic routing. Live model entitlement still depends on the configured OpenAI account and has not been verified here.
+
 ## Internal Admin catalog
 
 `GET /v1/admin/catalog` uses the existing internal `Authorization: Bearer <OLNOO_ROUTER_TOKEN>` guard. It returns the five provider names, registered models, and the Router's actual `service.task` presets. `connected` means only that a provider adapter is registered. `available` remains `null` until an explicit check; it is never inferred from `/health.providers`.

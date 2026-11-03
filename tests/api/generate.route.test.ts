@@ -188,6 +188,28 @@ describe('POST /v1/generate', () => {
     });
   });
 
+  it('selects review only when requested and pins OpenAI model, reasoning and fallback', async () => {
+    const openaiCall = vi.fn().mockImplementation(async (input) => ({
+      model: input.model, content: '{"risk":"low"}', finishReason: 'stop',
+      usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30 },
+      reasoningApplied: 'effort=medium',
+    }));
+    const deepseekCall = vi.fn();
+    const registry = new ProviderRegistry();
+    registry.register(new FakeProvider({ name: 'openai', models: [{ id: 'gpt-5.4-mini-2026-03-17', label: 'Review' }], chatImpl: openaiCall }));
+    registry.register(new FakeProvider({ name: 'deepseek', models: [{ id: 'deepseek-flash', label: 'Text' }], chatImpl: deepseekCall }));
+    app = await buildApp({ registry });
+    await app.ready();
+    const response = await app.inject({ method: 'POST', url: '/v1/generate', headers: { authorization: `Bearer ${TOKEN}` }, payload: {
+      service: 'content-factory', presetTask: 'review', provider: 'deepseek', model: 'deepseek-flash',
+      reasoningMode: 'off', allowFallback: true, messages: [{ role: 'user', content: 'Review this article' }],
+    } });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ provider: 'openai', model: 'gpt-5.4-mini-2026-03-17', fallbackUsed: false, usage: { totalTokens: 30 } });
+    expect(openaiCall).toHaveBeenCalledWith(expect.objectContaining({ model: 'gpt-5.4-mini-2026-03-17', reasoningMode: 'medium' }), expect.any(Object));
+    expect(deepseekCall).not.toHaveBeenCalled();
+  });
+
   it('does not fall back after a Content Factory provider failure', async () => {
     const openaiCall = vi.fn();
     const registry = new ProviderRegistry();

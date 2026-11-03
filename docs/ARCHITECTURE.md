@@ -159,3 +159,12 @@ The interfaces in this codebase are shaped so the following can be added without
 - **Vector search / RAG / memory** — new services entirely, called by products _before_ they call this router; out of scope for the router itself.
 
 See [`docs/ROADMAP.md`](./ROADMAP.md) for what's explicitly deferred and why.
+
+
+## Content Factory model selection (Admin)
+
+The existing `content-factory.text` and `content-factory.review` service presets may be changed from the OLNOO Admin AI Router screen. Only these two assignments are editable. The Router remains authoritative; the Admin writes through its server-only bearer-authenticated proxy and does not keep a second settings table.
+
+The Router validates that the chosen provider and exact model are registered. Selections are persisted atomically as a small JSON file outside Git at `/opt/olnoo/ai-router-presets.json` by default (override with `AI_ROUTER_PRESET_SELECTION_PATH`). The Router service user needs write permission to the parent directory. Do not put the file in Git. If the file is absent, code-defined presets are used. Corrupted selections fail closed rather than silently switching providers. The file must survive deployment and service restarts.
+
+The text and review presets retain their existing reasoning levels and `allowFallback: false`. Provider availability checks are advisory; selecting a model does not guarantee billing credit. The generated publication and independent review retain existing human-approval requirements.

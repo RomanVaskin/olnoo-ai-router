@@ -86,9 +86,15 @@ export function updateTextPresetSelection(key: EditableKey, selection: Selection
 
 export function listResolvedServicePresets(): Record<string, ImagePreset | TextPreset> {
   const selected = readSelections();
-  return Object.fromEntries(Object.entries(SERVICE_PRESETS).map(([key, preset]) => [
-    key, key in selected ? { ...preset, ...selected[key as EditableKey] } : preset,
-  ]));
+  const resolved: Record<string, ImagePreset | TextPreset> = { ...SERVICE_PRESETS };
+  for (const key of EDITABLE_TEXT_PRESETS) {
+    const override = selected[key];
+    const preset = SERVICE_PRESETS[key];
+    if (override && preset && 'reasoningMode' in preset) {
+      resolved[key] = { ...preset, ...override };
+    }
+  }
+  return resolved;
 }
 
 export function presetKey(service: string, task: ServiceTask): string {

@@ -4,9 +4,9 @@ import { dirname } from 'node:path';
 // Fixed routing of OLNOO services: `service + task` -> provider / model / model config.
 //
 // First stage: NO automatic model selection, no fallback between models, no scoring. Each (service, task) pair
-// is bound by hand to exactly one preset, in this file only. Client apps send just their service id (plus the
-// task-specific input) and never choose a preset's provider, model or pinned settings — to change a model, edit the
-// preset here; no client changes are needed. New services/tasks are added as new entries.
+// has a code-defined default. Only Content Factory text/review assignments may be selected by
+// the authenticated Admin; a small runtime file retains those choices across restarts.
+// Client apps still send service/task and never choose provider/model directly.
 
 export type ServiceTask = 'image' | 'text' | 'review';
 

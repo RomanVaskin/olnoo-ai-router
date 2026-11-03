@@ -29,7 +29,13 @@ export function createProviderRegistry(env: Env): ProviderRegistry {
       new OpenAIProvider({
         apiKey: env.OPENAI_API_KEY,
         model: env.OPENAI_DEFAULT_MODEL,
-        enabledModels: [...new Set([...env.OPENAI_MODELS, env.OPENAI_DEFAULT_MODEL])],
+        enabledModels: [...new Set([
+          ...env.OPENAI_MODELS,
+          env.OPENAI_DEFAULT_MODEL,
+          ...Object.entries(SERVICE_PRESETS)
+            .filter(([, preset]) => preset.provider === 'openai' && 'reasoningMode' in preset)
+            .map(([, preset]) => preset.model),
+        ])],
         requestTimeoutMs: env.PROVIDER_REQUEST_TIMEOUT_MS,
         imageModel: env.OPENAI_IMAGE_MODEL,
         imageQuality: env.OPENAI_IMAGE_QUALITY,

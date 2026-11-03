@@ -26,6 +26,8 @@ export const generateRequestSchema = z.object({
     .string()
     .regex(/^[a-z][a-z0-9_-]{0,63}$/)
     .optional(),
+  // Omitted remains the legacy service text preset; review is selected explicitly.
+  presetTask: z.enum(['text', 'review']).optional(),
   taskType: taskTypeSchema.default('general'),
   messages: z.array(generateMessageSchema).min(1).max(64),
   provider: providerNameSchema.optional(),

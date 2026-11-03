@@ -26,8 +26,8 @@ export interface TextPreset {
 export const SERVICE_PRESETS: Readonly<Record<string, ImagePreset | TextPreset>> = {
   'driveset.image': { provider: 'openai', model: 'gpt-image-1-mini', quality: 'medium' },
   'content-factory.text': {
-    provider: 'deepseek',
-    model: 'deepseek-flash',
+    provider: 'openai',
+    model: 'gpt-5.4-mini-2026-03-17',
     reasoningMode: 'off',
     allowFallback: false,
   },

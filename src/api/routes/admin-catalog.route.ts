@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { AppError } from '../../errors/app-error.js';
-import { SERVICE_PRESETS } from '../../router/service-presets.js';
+import { EDITABLE_TEXT_PRESETS, listResolvedServicePresets, updateTextPresetSelection } from '../../router/service-presets.js';
 import { createBearerTokenGuard } from '../../security/bearer-token.guard.js';
 import type { AppDependencies } from '../dependencies.js';
 
@@ -64,7 +64,7 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, deps: AppDepend
             ?.listModels()
             .map(({ id, label }) => ({ id, label })) ?? [],
       })),
-      presets: Object.entries(SERVICE_PRESETS).map(([key, preset]) => ({
+      presets: Object.entries(listResolvedServicePresets()).map(([key, preset]) => ({
         key,
         service: key.split('.')[0] ?? '',
         task: key.split('.')[1] ?? '',
@@ -76,6 +76,31 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, deps: AppDepend
           : {}),
       })),
     }),
+  );
+
+  app.withTypeProvider<ZodTypeProvider>().post(
+    '/v1/admin/presets',
+    {
+      preHandler: guard,
+      schema: {
+        tags: ['Operations'],
+        body: z.object({
+          key: z.enum(EDITABLE_TEXT_PRESETS),
+          provider: providerName,
+          model: z.string().min(1).max(128),
+        }).strict(),
+        response: { 200: z.object({ key: z.string(), provider: providerName, model: z.string() }) },
+      },
+    },
+    (request) => {
+      const { key, provider: providerNameValue, model } = request.body;
+      const provider = deps.registry.get(providerNameValue);
+      if (!provider || !provider.supportsModel(model) || !provider.listModels().some((m) => m.id === model)) {
+        throw new AppError('MODEL_NOT_FOUND', 'Selected model is not configured on this AI Router');
+      }
+      const updated = updateTextPresetSelection(key, { provider: providerNameValue, model });
+      return { key, provider: updated.provider, model: updated.model };
+    },
   );
 
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -94,7 +119,7 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, deps: AppDepend
       if (!provider) return status(name);
       // The Content Factory preset is the known working DeepSeek text path. The configured
       // default can be a thinking model and exhaust a tiny check before final content exists.
-      const presetModel = SERVICE_PRESETS['content-factory.text']?.model;
+      const presetModel = listResolvedServicePresets()['content-factory.text']?.model;
       const model =
         name === 'deepseek' && presetModel && provider.supportsModel(presetModel)
           ? presetModel

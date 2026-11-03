@@ -117,8 +117,8 @@ export function registerAdminCatalogRoutes(app: FastifyInstance, deps: AppDepend
       const name = request.params.name;
       const provider = deps.registry.get(name);
       if (!provider) return status(name);
-      // The Content Factory preset is the known working DeepSeek text path. The configured
-      // default can be a thinking model and exhaust a tiny check before final content exists.
+      // Prefer the currently selected Content Factory model for DeepSeek availability checks.
+      // Other providers use their first registered model.
       const presetModel = listResolvedServicePresets()['content-factory.text']?.model;
       const model =
         name === 'deepseek' && presetModel && provider.supportsModel(presetModel)
